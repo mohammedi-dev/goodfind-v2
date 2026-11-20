@@ -12,7 +12,9 @@ Built with modern web technologies and designed with a focus on user experience,
 - **Beautiful UI**: Responsive design with dark/light mode support
 - **Admin Dashboard**: Powerful tools for content management
 
-The homepage uses the shared tokens in `app/discovery.css`, Manrope, and the existing Radix and Lucide components. The topic hierarchy and collection rules live in `lib/discovery.ts`. They match the library’s existing category slugs and comma-separated bookmark tags, so adding a browse topic requires no database migration. Admin-created categories continue to work independently.
+The homepage is a four-category showcase for AI, Software, Gaming, and Media. Existing categories remain editable from the admin. Resources from other categories appear under Software unless a category or tag matches one of the other showcase groups. In the bookmark editor, expand **Showcase details** to set tags, platforms, a GitHub repository, or a permitted screenshot. The Overview field can include public recommendations. Existing private notes stay in the database.
+
+The optional local seed adds example resources without replacing existing records. Where a resource has no screenshot, Goodfind uses its own artwork. Bundled marks are from [Simple Icons](https://simpleicons.org/) and official resource sites where available.
 
 ## Tech Stack
 
@@ -65,7 +67,7 @@ pnpm db:seed
 pnpm dev
 ```
 
-Open the directory at [http://localhost:3000](http://localhost:3000) and sign in at [/admin](http://localhost:3000/admin). The seed adds four categories and six example resources and can be rerun. `pnpm lint`, `pnpm exec tsc --noEmit` and `pnpm build` check the project.
+Open the showcase at [http://localhost:3000](http://localhost:3000) and sign in at [/admin](http://localhost:3000/admin). The seed adds 18 example resources to a fresh database and can be rerun safely. `pnpm lint`, `pnpm exec tsc --noEmit` and `pnpm build` check the project.
 
 The local setup initializes a disposable database directly from `db/schema.ts`. The legacy migrations and the schema differ. Reconcile those migrations against a backup before changing an existing Goodfind or Turso database.
 

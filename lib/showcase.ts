@@ -1,0 +1,87 @@
+export const showcaseCategories = [
+  { id: "ai", label: "AI" },
+  { id: "software", label: "Software" },
+  { id: "gaming", label: "Gaming" },
+  { id: "media", label: "Media" },
+] as const;
+
+export type ShowcaseCategory = (typeof showcaseCategories)[number]["id"];
+export type Artwork = "orbit" | "stack" | "grid" | "rays";
+
+export type ShowcaseResource = {
+  id: number;
+  slug: string;
+  title: string;
+  description: string | null;
+  overview: string | null;
+  url: string;
+  favicon: string | null;
+  fallbackFavicon: string | null;
+  screenshot: string | null;
+  tags: string[];
+  platforms: string[];
+  github: string | null;
+  category: ShowcaseCategory;
+  accent: string;
+  artwork: Artwork;
+};
+
+const categoryAliases: Record<ShowcaseCategory, string[]> = {
+  ai: ["ai", "ai learning", "artificial intelligence", "ai tools", "machine learning"],
+  software: ["software"],
+  gaming: ["gaming", "gaming utilities", "mods", "emulation", "game launchers"],
+  media: ["media", "music media", "music and media", "music", "audio", "video", "streaming"],
+};
+
+const normalize = (text: string) => text.toLowerCase().trim().replace(/[-_&\s]+/g, " ");
+
+export function showcaseCategory(category?: string, tags: string[] = []): ShowcaseCategory {
+  const candidates = [category || "", ...tags].map(normalize);
+  for (const candidate of candidates) {
+    const match = showcaseCategories.find(({ id }) => categoryAliases[id].includes(candidate));
+    if (match) return match.id;
+  }
+  return "software";
+}
+
+export function isShowcaseCategory(value: string | undefined): value is ShowcaseCategory {
+  return showcaseCategories.some(({ id }) => id === value);
+}
+
+export function githubResourceUrl(value?: string | null): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol === "https:" && url.hostname === "github.com" && !url.username && !url.password &&
+        url.pathname.split("/").filter(Boolean).length >= 2) return url.href;
+  } catch {
+    // An incomplete or unrelated URL is not a repository link.
+  }
+  return null;
+}
+
+function splitList(value?: string | null) {
+  return [...new Set((value || "").split(",").map((item) => item.trim()).filter(Boolean))];
+}
+
+export function readShowcaseTags(value?: string | null) {
+  const items = splitList(value);
+  const platforms = items.filter((item) => item.toLowerCase().startsWith("platform:"))
+    .map((item) => item.slice("platform:".length).trim()).filter(Boolean);
+  const github = items.find((item) => item.toLowerCase().startsWith("github:"));
+  return {
+    tags: items.filter((item) => !/^(platform|github):/i.test(item)),
+    platforms,
+    github: githubResourceUrl(github?.slice("github:".length)),
+  };
+}
+
+export function writeShowcaseTags(tags: string, platforms: string, github: string) {
+  const parsed = readShowcaseTags(tags);
+  const repo = githubResourceUrl(github);
+  return [
+    ...parsed.tags,
+    ...splitList(platforms).map((platform) => `platform:${platform}`),
+    ...(repo ? [`github:${repo}`] : []),
+  ].join(", ");
+}

@@ -40,6 +40,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Upload, Loader2, Trash2 } from "lucide-react";
+import { githubResourceUrl, readShowcaseTags, writeShowcaseTags } from "@/lib/showcase";
+import { getResourceStyle } from "@/lib/showcase-catalog";
 
 interface Category {
   id: string;
@@ -59,7 +61,8 @@ interface Bookmark {
   url: string;
   description: string | null;
   overview: string | null;
-  search_results: string | null;
+  tags: string | null;
+  screenshot: string | null;
   favicon: string | null;
   ogImage: string | null;
   categoryId: string | null;
@@ -104,6 +107,8 @@ export function BookmarkManager({
   const [selectedBookmark, setSelectedBookmark] =
     useState<BookmarkWithCategory | null>(null);
   const [isNewBookmark, setIsNewBookmark] = useState(true);
+  const metadata = readShowcaseTags(selectedBookmark?.tags);
+  const starterMetadata = selectedBookmark?.tags === null ? getResourceStyle(selectedBookmark.slug) : undefined;
 
   // Form state management
   const [formData, setFormData] = useState({
@@ -112,7 +117,7 @@ export function BookmarkManager({
     url: "",
     description: "",
     overview: "",
-    search_results: "",
+    searchResults: undefined as string | undefined,
     favicon: "",
     ogImage: "",
     categoryId: "none",
@@ -126,28 +131,31 @@ export function BookmarkManager({
     setIsSaving(true);
 
     try {
-      const formData = new FormData(e.currentTarget);
-      const formDataObject = {
-        title: formData.get("title") as string,
-        description: formData.get("description") as string,
-        url: formData.get("url") as string,
-        slug: formData.get("slug") as string,
-        overview: formData.get("overview") as string,
-        favicon: formData.get("favicon") as string,
-        ogImage: formData.get("ogImage") as string,
-        search_results: formData.get("search_results") as string,
-        categoryId: formData.get("categoryId") as string,
-        isFavorite: formData.get("isFavorite") as string,
-        isArchived: formData.get("isArchived") as string,
-      };
-
-      if (!isNewBookmark) {
-        (formDataObject as any).id = formData.get("id") as string;
+      const fields = new FormData(e.currentTarget);
+      const github = String(fields.get("github") || "").trim();
+      if (github && !githubResourceUrl(github)) {
+        toast.error("Enter a full GitHub repository URL.");
+        return;
       }
+      const formDataObject = {
+        title: formData.title,
+        description: formData.description,
+        url: formData.url,
+        slug: formData.slug,
+        overview: formData.overview,
+        favicon: formData.favicon,
+        ogImage: formData.ogImage,
+        screenshot: String(fields.get("screenshot") || "").trim(),
+        tags: writeShowcaseTags(String(fields.get("tags") || ""), String(fields.get("platforms") || ""), github),
+        search_results: formData.searchResults,
+        categoryId: formData.categoryId,
+        isFavorite: String(formData.isFavorite),
+        isArchived: String(formData.isArchived),
+      };
 
       const result = isNewBookmark
         ? await createBookmark(null, formDataObject)
-        : await updateBookmark(null, formDataObject as any);
+        : await updateBookmark(null, { ...formDataObject, id: String(fields.get("id") || "") });
 
       if (result.error) {
         toast.error(result.error);
@@ -176,7 +184,7 @@ export function BookmarkManager({
           url: selectedBookmark.url,
           description: selectedBookmark.description || "",
           overview: selectedBookmark.overview || "",
-          search_results: selectedBookmark.search_results || "",
+          searchResults: undefined,
           favicon: selectedBookmark.favicon || "",
           ogImage: selectedBookmark.ogImage || "",
           categoryId: selectedBookmark.categoryId?.toString() || "none",
@@ -196,7 +204,7 @@ export function BookmarkManager({
       url: "",
       description: "",
       overview: "",
-      search_results: "",
+      searchResults: undefined,
       favicon: "",
       ogImage: "",
       categoryId: "none",
@@ -269,10 +277,6 @@ export function BookmarkManager({
         return;
       }
 
-      // Create a new FormData with just the URL
-      const data = new FormData();
-      data.append("url", url);
-
       const result = await generateContent(url);
 
       if ("error" in result) {
@@ -283,6 +287,7 @@ export function BookmarkManager({
           title: result.title || prev.title,
           description: result.description || prev.description,
           overview: result.overview || prev.overview,
+          searchResults: result.search_results || prev.searchResults,
           favicon: result.favicon || prev.favicon,
           ogImage: result.ogImage || prev.ogImage,
           slug: result.slug || prev.slug,
@@ -505,6 +510,7 @@ export function BookmarkManager({
 
                 <div className="space-y-2">
                   <Label htmlFor="overview">Overview</Label>
+                  <p className="text-sm text-muted-foreground">Describe what this is useful for. Add any recommendations you want readers to see here.</p>
                   <Textarea
                     id="overview"
                     name="overview"
@@ -518,6 +524,28 @@ export function BookmarkManager({
                   />
                 </div>
 
+                <details className="rounded-lg border p-3">
+                  <summary className="cursor-pointer text-sm font-semibold">Showcase details</summary>
+                  <div className="mt-3 grid gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="showcase-tags">Tags</Label>
+                      <Input id="showcase-tags" name="tags" placeholder="Open Source, Free" defaultValue={(starterMetadata?.tags ?? metadata.tags).join(", ")} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="showcase-platforms">Platforms</Label>
+                      <Input id="showcase-platforms" name="platforms" placeholder="Web, Windows, macOS" defaultValue={(starterMetadata?.platforms ?? metadata.platforms).join(", ")} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="showcase-github">GitHub repository URL</Label>
+                      <Input id="showcase-github" name="github" type="url" placeholder="https://github.com/owner/repo" defaultValue={starterMetadata?.github ?? metadata.github ?? ""} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="showcase-screenshot">Screenshot URL</Label>
+                      <Input id="showcase-screenshot" name="screenshot" placeholder="https://…" defaultValue={selectedBookmark?.screenshot ?? ""} />
+                      <p className="text-sm text-muted-foreground">Use an official or permitted screenshot. Goodfind supplies artwork when this is blank.</p>
+                    </div>
+                  </div>
+                </details>
                 <div className="space-y-2">
                   <Label htmlFor="category">Category</Label>
                   <Select

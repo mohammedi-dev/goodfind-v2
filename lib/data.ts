@@ -6,6 +6,24 @@ import type { DiscoveryResource } from "@/lib/discovery";
 export type Bookmark = typeof bookmarks.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 
+export async function getShowcaseBookmarks() {
+  return db.select({
+    id: bookmarks.id,
+    slug: bookmarks.slug,
+    title: bookmarks.title,
+    url: bookmarks.url,
+    description: bookmarks.description,
+    overview: bookmarks.overview,
+    tags: bookmarks.tags,
+    favicon: bookmarks.favicon,
+    screenshot: bookmarks.screenshot,
+    isFavorite: bookmarks.isFavorite,
+    category: { id: categories.id, slug: categories.slug, name: categories.name },
+  }).from(bookmarks)
+    .leftJoin(categories, eq(bookmarks.categoryId, categories.id))
+    .where(eq(bookmarks.isArchived, false));
+}
+
 export async function getDiscoveryResources(): Promise<DiscoveryResource[]> {
   return db.select({
     id: bookmarks.id,
