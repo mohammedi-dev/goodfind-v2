@@ -1,6 +1,6 @@
 import { db } from "@/db/client";
-import { bookmarks, categories } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { bookmarks, categories, showcaseAppearance, showcaseSettings } from "@/db/schema";
+import { and, eq, getTableColumns } from "drizzle-orm";
 import type { DiscoveryResource } from "@/lib/discovery";
 
 export type Bookmark = typeof bookmarks.$inferSelect;
@@ -19,8 +19,10 @@ export async function getShowcaseBookmarks() {
     screenshot: bookmarks.screenshot,
     isFavorite: bookmarks.isFavorite,
     category: { id: categories.id, slug: categories.slug, name: categories.name },
+    appearance: showcaseAppearance,
   }).from(bookmarks)
     .leftJoin(categories, eq(bookmarks.categoryId, categories.id))
+    .leftJoin(showcaseSettings, eq(bookmarks.id, showcaseSettings.bookmarkId))
     .where(eq(bookmarks.isArchived, false));
 }
 
@@ -42,16 +44,12 @@ export async function getDiscoveryResources(): Promise<DiscoveryResource[]> {
   }).from(bookmarks).leftJoin(categories, eq(bookmarks.categoryId, categories.id));
 }
 
-export async function getAllBookmarks(): Promise<(Bookmark & { category: Category | null })[]> {
-  const results = await db
-    .select()
+export async function getAllBookmarks() {
+  return db
+    .select({ ...getTableColumns(bookmarks), category: getTableColumns(categories), appearance: showcaseAppearance })
     .from(bookmarks)
-    .leftJoin(categories, eq(bookmarks.categoryId, categories.id));
-  
-  return results.map(row => ({
-    ...row.bookmarks,
-    category: row.categories,
-  }));
+    .leftJoin(categories, eq(bookmarks.categoryId, categories.id))
+    .leftJoin(showcaseSettings, eq(bookmarks.id, showcaseSettings.bookmarkId));
 }
 
 export async function getAllCategories(): Promise<Category[]> {
@@ -81,7 +79,7 @@ export async function getBookmarkBySlug(slug: string): Promise<(Bookmark & { cat
     .select()
     .from(bookmarks)
     .leftJoin(categories, eq(bookmarks.categoryId, categories.id))
-    .where(eq(bookmarks.slug, slug))
+    .where(and(eq(bookmarks.slug, slug), eq(bookmarks.isArchived, false)))
     .limit(1);
   
   if (results.length === 0) {

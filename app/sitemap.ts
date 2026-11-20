@@ -1,5 +1,5 @@
 import { MetadataRoute } from "next";
-import { getAllBookmarks } from "@/lib/data";
+import { getShowcaseBookmarks } from "@/lib/data";
 import { directory } from "@/directory.config";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +8,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = directory.baseUrl;
 
   // Fetch all bookmarks
-  const bookmarks = await getAllBookmarks();
+  const bookmarks = await getShowcaseBookmarks();
 
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [

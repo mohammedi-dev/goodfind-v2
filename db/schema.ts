@@ -1,4 +1,4 @@
-import { text, sqliteTable, integer } from "drizzle-orm/sqlite-core";
+import { blob, text, sqliteTable, integer } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 import { relations } from "drizzle-orm";
 
@@ -58,6 +58,28 @@ export const bookmarks = sqliteTable("bookmarks", {
     .default(false),
   search_results: text("search_results"),
 });
+
+export const showcaseSettings = sqliteTable("showcase_settings", {
+  bookmarkId: integer("bookmark_id").primaryKey().references(() => bookmarks.id, { onDelete: "cascade" }),
+  position: integer("position"),
+  accent: text("accent"),
+  background: text("background"),
+  pattern: text("pattern"),
+  logoId: text("logo_id").unique(),
+  logo: blob("logo", { mode: "buffer" }),
+  artworkId: text("artwork_id").unique(),
+  artwork: blob("artwork", { mode: "buffer" }),
+});
+
+export const showcaseAppearance = {
+  bookmarkId: showcaseSettings.bookmarkId,
+  position: showcaseSettings.position,
+  accent: showcaseSettings.accent,
+  background: showcaseSettings.background,
+  pattern: showcaseSettings.pattern,
+  logoId: showcaseSettings.logoId,
+  artworkId: showcaseSettings.artworkId,
+};
 
 // Relations
 export const bookmarksRelations = relations(bookmarks, ({ one }) => ({

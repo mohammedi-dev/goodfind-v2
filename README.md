@@ -12,7 +12,7 @@ Built with modern web technologies and designed with a focus on user experience,
 - **Beautiful UI**: Responsive design with dark/light mode support
 - **Admin Dashboard**: Powerful tools for content management
 
-The homepage is a four-category showcase for AI, Software, Gaming, and Media. Existing categories remain editable from the admin. Resources from other categories appear under Software unless a category or tag matches one of the other showcase groups. In the bookmark editor, expand **Showcase details** to edit tags, platforms, a GitHub repository, artwork, or a public recommendation. Add a permitted product screenshot or an authentic brand image. Goodfind otherwise displays the resource logo with a supporting background. Existing private notes stay in the database.
+The homepage is a four-category showcase for AI, Software, Gaming, and Media. Existing categories remain editable from the admin. Legacy resources from other categories appear under Software unless a category or tag matches another showcase group. Existing private notes stay in the database.
 
 The optional local seed adds example resources without replacing existing records. Where a resource has no screenshot, Goodfind uses its own artwork. Bundled marks are from [Simple Icons](https://simpleicons.org/) and official resource sites where available.
 
@@ -69,43 +69,28 @@ pnpm dev
 
 Open the showcase at [http://localhost:3000](http://localhost:3000) and sign in at [/admin](http://localhost:3000/admin). The seed adds 18 example resources to a fresh database and can be rerun safely. `pnpm lint`, `pnpm exec tsc --noEmit` and `pnpm build` check the project.
 
-The local setup initializes a disposable database directly from `db/schema.ts`. The legacy migrations and the schema differ. Reconcile those migrations against a backup before changing an existing Goodfind or Turso database.
+The local setup initializes a database directly from `db/schema.ts`. For an existing schema-initialized database, back it up and run `pnpm db:push` to add the showcase settings table. On a database managed by Drizzle migrations, review and apply migration `0003_showcase_resource_settings.sql`. It adds one table and leaves existing records intact. Reconcile the older migrations against a backup if their schema differs from the current database.
 
 ### External services
 
 | Configuration | Used for |
 | --- | --- |
 | `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` | Hosted Turso database. Local SQLite needs only the `file:` URL. |
-| `ANTHROPIC_API_KEY`, `EXASEARCH_API_KEY` | Admin AI overviews and bulk URL import. Public keyword search works locally. |
+| `ANTHROPIC_API_KEY`, `EXASEARCH_API_KEY` | Optional admin AI overviews and bulk enrichment. Single-URL import works without keys. |
 | `LOOPS_API_KEY` | Newsletter signups. |
 | `NEXT_PUBLIC_SITE_URL` | Canonical site origin for metadata and sitemap. |
 | Vercel project | Optional hosting and Vercel Analytics. |
 
-Before deploying publicly, add outbound network restrictions for metadata fetches, add sign-in throttling and review remaining advisories with `pnpm audit --prod`.
+Before deploying publicly, review infrastructure egress controls, admin sign-in throttling, and production dependency advisories with `pnpm audit --prod`.
 
 ## Admin Dashboard
 
-The admin dashboard at `/admin` provides a powerful interface for managing your directory:
+1. Sign in at `/admin` and choose **Add resource** or **Import URL**. For an import, paste the website or GitHub URL and select **Read metadata**. Goodfind fills empty fields from the website or GitHub's public repository API. Review the result and choose a showcase category.
+2. Use **Appearance** to set a logo URL, link permitted artwork or a screenshot, or upload PNG, JPEG, or WebP files up to 2 MB each. Colors and patterns customize the logo-centered fallback. Uploads are stored with the resource so they remain available after a restart.
+3. Check **Card preview**, then choose **Save draft** or **Publish resource**. Use **Edit** to update a resource and **Hide resource** to take it offline. Drafts stay out of the carousel, public resource pages, and sitemap.
+4. Filter by one category with visibility set to **All statuses** to reorder using the arrows. Select **Delete resource** and confirm to permanently remove an entry and its uploads.
 
-### Managing Bookmarks
-
-1. **Add Single Bookmark**
-
-   - Enter URL for automatic metadata extraction
-   - AI-powered description and overview generation
-   - Customize metadata and categorization
-   - Set favorite/archived status
-
-2. **Bulk Import**
-
-   - Upload a CSV with one URL per line
-   - Generate metadata and overviews during import
-   - Review and edit imported entries in the dashboard
-
-3. **Edit Bookmarks**
-   - Update metadata and categories
-   - Regenerate AI content
-   - Manage bookmark status
+Metadata requests use standard HTTP(S) ports, recheck public destinations on redirects, and enforce request and response limits. The optional bulk enrichment workflow saves drafts for review.
 
 ### Managing Categories
 

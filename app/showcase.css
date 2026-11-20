@@ -1,4 +1,4 @@
-.showcase, .showcase-dialog {
+.showcase, .showcase-dialog, .showcase-card-preview {
   --sc-background: #101013;
   --sc-surface: #19191e;
   --sc-border: #34343e;
@@ -8,6 +8,12 @@
   --sc-ease: cubic-bezier(.24,.7,.18,1);
   color-scheme: dark;
   color: var(--sc-text);
+}
+
+.showcase-card-preview {
+  --sc-art-height: 12rem;
+  --sc-copy-height: 7.1rem;
+  --sc-card-radius: 1.15rem;
 }
 
 .showcase {
@@ -170,7 +176,7 @@
   box-shadow: 0 3px 8px #06060855;
 }
 .showcase-card-identity img { width: 1.15rem; height: 1.15rem; object-fit: contain; }
-:is(.showcase-card-identity, .showcase-emblem, .showcase-dialog-icon):has(> img[src="/showcase-icons/chatgpt.webp"]) {
+:is(.showcase-card-identity, .showcase-emblem, .showcase-dialog-icon, .showcase-admin-logo):has(> img[src="/showcase-icons/chatgpt.webp"]) {
   background: #c8f0df;
   border-color: #d9f6eb;
 }
@@ -184,7 +190,7 @@
   height: 100%;
   place-items: center;
   overflow: hidden;
-  background: radial-gradient(ellipse at 48% 36%, color-mix(in srgb, var(--resource-accent) 42%, #1a1728), color-mix(in srgb, var(--resource-accent) 21%, #121218) 54%, #12121b 112%);
+  background: var(--resource-background, radial-gradient(ellipse at 48% 36%, color-mix(in srgb, var(--resource-accent) 42%, #1a1728), color-mix(in srgb, var(--resource-accent) 21%, #121218) 54%, #12121b 112%));
 }
 .showcase-card-art::before {
   content: "";

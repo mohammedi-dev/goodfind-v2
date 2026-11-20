@@ -2,7 +2,7 @@
 
 import { db } from "@/db/client";
 import { bookmarks, categories } from "@/db/schema";
-import { generateSlug, isBookmarkUrl } from "@/lib/utils";
+import { generateSlug } from "@/lib/utils";
 import { hasAdminSession } from "@/lib/admin-session";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -168,148 +168,6 @@ export async function deleteCategory(
   }
 }
 
-// Bookmark Actions
-export async function createBookmark(
-  prevState: ActionState | null,
-  formData: {
-    title: string;
-    description: string;
-    url: string;
-    slug: string;
-    overview: string;
-    favicon: string;
-    ogImage: string;
-    tags?: string;
-    screenshot?: string;
-    search_results?: string;
-    categoryId: string;
-    isFavorite: string;
-    isArchived: string;
-  },
-): Promise<ActionState> {
-  if (!(await hasAdminSession())) return signInError;
-  try {
-    const title = formData.title;
-    const description = formData.description;
-    const url = formData.url;
-    let slug = formData.slug;
-    const overview = formData.overview;
-    const favicon = formData.favicon;
-    const ogImage = formData.ogImage;
-    const search_results = formData.search_results;
-    const categoryId = formData.categoryId;
-    const isFavorite = formData.isFavorite === "true";
-    const isArchived = formData.isArchived === "true";
-    if (!isBookmarkUrl(url)) return { error: "A valid HTTP(S) URL is required" };
-
-    // Generate slug if not provided
-    if (!slug) {
-      slug = generateSlug(title);
-    }
-
-    await db.insert(bookmarks).values({
-      title,
-      slug,
-      url,
-      description,
-      categoryId: categoryId === "none" ? null : categoryId,
-      search_results: search_results || null,
-      isFavorite,
-      isArchived,
-      overview,
-      favicon,
-      ogImage,
-      tags: formData.tags,
-      screenshot: formData.screenshot || null,
-    });
-
-    revalidatePath("/admin");
-    revalidatePath("/");
-
-    return { success: true };
-  } catch (err) {
-    console.error("Error creating bookmark:", err);
-    return { error: "Failed to create bookmark" };
-  }
-}
-
-export async function updateBookmark(
-  prevState: ActionState | null,
-  formData: {
-    id: string;
-    title: string;
-    description: string;
-    url: string;
-    slug: string;
-    overview: string;
-    favicon: string;
-    ogImage: string;
-    tags?: string;
-    screenshot?: string;
-    search_results?: string;
-    categoryId: string;
-    isFavorite: string;
-    isArchived: string;
-  },
-): Promise<ActionState> {
-  if (!(await hasAdminSession())) return signInError;
-  try {
-    if (!formData) {
-      return { error: "No form data provided" };
-    }
-
-    const id = formData.id;
-    if (!id) {
-      return { error: "No bookmark ID provided" };
-    }
-
-    const title = formData.title;
-    const description = formData.description;
-    const url = formData.url;
-    let slug = formData.slug;
-    const overview = formData.overview;
-    const favicon = formData.favicon;
-    const ogImage = formData.ogImage;
-    const search_results = formData.search_results;
-    const categoryId = formData.categoryId;
-    const isFavorite = formData.isFavorite === "true";
-    const isArchived = formData.isArchived === "true";
-    if (!isBookmarkUrl(url)) return { error: "A valid HTTP(S) URL is required" };
-
-    // Generate slug if not provided
-    if (!slug) {
-      slug = generateSlug(title);
-    }
-
-    await db
-      .update(bookmarks)
-      .set({
-        title,
-        slug,
-        url,
-        description,
-        categoryId: categoryId === "none" ? null : categoryId,
-        search_results: search_results === undefined ? undefined : search_results || null,
-        overview,
-        favicon,
-        ogImage,
-        tags: formData.tags,
-        screenshot: formData.screenshot === undefined ? undefined : formData.screenshot || null,
-        isFavorite,
-        isArchived,
-      })
-      .where(eq(bookmarks.id, Number(id)));
-
-    revalidatePath("/admin");
-    revalidatePath("/");
-
-    return { success: true };
-  } catch (err) {
-    console.error("Error updating bookmark:", err);
-    return { error: "Failed to update bookmark" };
-  }
-}
-
 export async function deleteBookmark(
   prevState: ActionState | null,
   formData: {
@@ -402,7 +260,7 @@ export async function bulkUploadBookmarks(
           slug: content.slug,
           categoryId: null,
           isFavorite: false,
-          isArchived: false,
+          isArchived: true,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -421,7 +279,7 @@ export async function bulkUploadBookmarks(
     revalidatePath("/");
     return {
       success: true,
-      message: `Successfully imported ${successCount} bookmarks. ${errorCount > 0 ? `Failed to import ${errorCount} URLs.` : ""}`,
+      message: `Imported ${successCount} drafts. ${errorCount > 0 ? `Failed to import ${errorCount} URLs.` : ""}`,
       progress: {
         current: urlList.length,
         total: urlList.length,
@@ -451,14 +309,7 @@ export async function scrapeUrl(
     const url = formData.url;
     if (!url) return { error: "URL is required" };
 
-    const apiKey = process.env.EXASEARCH_API_KEY;
-    if (!apiKey) return { error: "Exa is unconfigured" };
     const metadata = await getUrlMetadata(url);
-    const exa = new Exa(apiKey);
-    const searchResults = await exa.getContents([metadata.url], {
-      text: true,
-      livecrawl: "fallback",
-    });
 
     return {
       success: true,
@@ -468,7 +319,6 @@ export async function scrapeUrl(
         favicon: metadata.favicon || "",
         ogImage: metadata.ogImage || "",
         url: metadata.url || url,
-        search_results: JSON.stringify(searchResults),
       },
     };
   } catch (error) {
