@@ -40,7 +40,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Upload, Loader2, Trash2 } from "lucide-react";
-import { githubResourceUrl, readShowcaseTags, writeShowcaseTags } from "@/lib/showcase";
+import { githubResourceUrl, readShowcaseTags, showcaseImageUrl, writeShowcaseTags } from "@/lib/showcase";
 import { getResourceStyle } from "@/lib/showcase-catalog";
 
 interface Category {
@@ -137,6 +137,11 @@ export function BookmarkManager({
         toast.error("Enter a full GitHub repository URL.");
         return;
       }
+      const artworkUrl = String(fields.get("artwork") || "").trim();
+      if (artworkUrl && !showcaseImageUrl(artworkUrl)) {
+        toast.error("Enter an artwork URL or a local path under /resources/.");
+        return;
+      }
       const formDataObject = {
         title: formData.title,
         description: formData.description,
@@ -146,7 +151,10 @@ export function BookmarkManager({
         favicon: formData.favicon,
         ogImage: formData.ogImage,
         screenshot: String(fields.get("screenshot") || "").trim(),
-        tags: writeShowcaseTags(String(fields.get("tags") || ""), String(fields.get("platforms") || ""), github),
+        tags: writeShowcaseTags(String(fields.get("tags") || ""), String(fields.get("platforms") || ""), github, {
+          artworkUrl,
+          recommendation: String(fields.get("recommendation") || ""),
+        }),
         search_results: formData.searchResults,
         categoryId: formData.categoryId,
         isFavorite: String(formData.isFavorite),
@@ -510,7 +518,7 @@ export function BookmarkManager({
 
                 <div className="space-y-2">
                   <Label htmlFor="overview">Overview</Label>
-                  <p className="text-sm text-muted-foreground">Describe what this is useful for. Add any recommendations you want readers to see here.</p>
+                  <p className="text-sm text-muted-foreground">Describe what this is useful for. You can add a public recommendation under Showcase details.</p>
                   <Textarea
                     id="overview"
                     name="overview"
@@ -542,7 +550,15 @@ export function BookmarkManager({
                     <div className="space-y-1">
                       <Label htmlFor="showcase-screenshot">Screenshot URL</Label>
                       <Input id="showcase-screenshot" name="screenshot" placeholder="https://…" defaultValue={selectedBookmark?.screenshot ?? ""} />
-                      <p className="text-sm text-muted-foreground">Use an official or permitted screenshot. Goodfind supplies artwork when this is blank.</p>
+                      <p className="text-sm text-muted-foreground">Use an official or permitted screenshot. It appears before other artwork.</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="showcase-artwork">Artwork URL</Label>
+                      <Input id="showcase-artwork" name="artwork" placeholder="https://… or /resources/…" defaultValue={metadata.artworkUrl ?? ""} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="showcase-recommendation">Public recommendation</Label>
+                      <Textarea id="showcase-recommendation" name="recommendation" rows={3} defaultValue={metadata.recommendation ?? ""} />
                     </div>
                   </div>
                 </details>

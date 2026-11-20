@@ -1,3 +1,5 @@
+import { isBookmarkUrl } from "./utils";
+
 export const showcaseCategories = [
   { id: "ai", label: "AI" },
   { id: "software", label: "Software" },
@@ -6,7 +8,7 @@ export const showcaseCategories = [
 ] as const;
 
 export type ShowcaseCategory = (typeof showcaseCategories)[number]["id"];
-export type Artwork = "orbit" | "stack" | "grid" | "rays";
+export type Artwork = "orbit" | "stack" | "grid" | "rays" | "signal" | "record" | "swatches" | "terminal";
 
 export type ShowcaseResource = {
   id: number;
@@ -18,6 +20,8 @@ export type ShowcaseResource = {
   favicon: string | null;
   fallbackFavicon: string | null;
   screenshot: string | null;
+  artworkUrl: string | null;
+  recommendation: string | null;
   tags: string[];
   platforms: string[];
   github: string | null;
@@ -64,24 +68,55 @@ function splitList(value?: string | null) {
   return [...new Set((value || "").split(",").map((item) => item.trim()).filter(Boolean))];
 }
 
+export function showcaseImageUrl(value?: string | null): string | null {
+  const source = value?.trim();
+  if (!source) return null;
+  if (source.startsWith("/resources/")) {
+    const origin = "https://showcase.invalid";
+    const url = new URL(source, origin);
+    if (url.origin === origin && url.pathname.startsWith("/resources/")) {
+      return url.pathname + url.search;
+    }
+  }
+  return isBookmarkUrl(source) ? source : null;
+}
+
 export function readShowcaseTags(value?: string | null) {
   const items = splitList(value);
   const platforms = items.filter((item) => item.toLowerCase().startsWith("platform:"))
     .map((item) => item.slice("platform:".length).trim()).filter(Boolean);
   const github = items.find((item) => item.toLowerCase().startsWith("github:"));
+  function readExtra(key: string) {
+    const item = items.find((entry) => entry.toLowerCase().startsWith(`${key}:`));
+    if (!item) return null;
+    try {
+      return decodeURIComponent(item.slice(key.length + 1)).trim() || null;
+    } catch {
+      return null;
+    }
+  }
   return {
-    tags: items.filter((item) => !/^(platform|github):/i.test(item)),
+    tags: items.filter((item) => !/^(platform|github|artwork|recommendation):/i.test(item)),
     platforms,
     github: githubResourceUrl(github?.slice("github:".length)),
+    artworkUrl: showcaseImageUrl(readExtra("artwork")),
+    recommendation: readExtra("recommendation"),
   };
 }
 
-export function writeShowcaseTags(tags: string, platforms: string, github: string) {
+export function writeShowcaseTags(tags: string, platforms: string, github: string, extras?: {
+  artworkUrl: string;
+  recommendation: string;
+}) {
   const parsed = readShowcaseTags(tags);
   const repo = githubResourceUrl(github);
+  const artwork = showcaseImageUrl(extras?.artworkUrl);
+  const recommendation = extras?.recommendation.trim();
   return [
     ...parsed.tags,
     ...splitList(platforms).map((platform) => `platform:${platform}`),
     ...(repo ? [`github:${repo}`] : []),
+    ...(artwork ? [`artwork:${encodeURIComponent(artwork)}`] : []),
+    ...(recommendation ? [`recommendation:${encodeURIComponent(recommendation)}`] : []),
   ].join(", ");
 }
