@@ -179,7 +179,9 @@ export async function createBookmark(
     overview: string;
     favicon: string;
     ogImage: string;
-    search_results: string;
+    tags?: string;
+    screenshot?: string;
+    search_results?: string;
     categoryId: string;
     isFavorite: string;
     isArchived: string;
@@ -217,6 +219,8 @@ export async function createBookmark(
       overview,
       favicon,
       ogImage,
+      tags: formData.tags,
+      screenshot: formData.screenshot || null,
     });
 
     revalidatePath("/admin");
@@ -240,7 +244,9 @@ export async function updateBookmark(
     overview: string;
     favicon: string;
     ogImage: string;
-    search_results: string;
+    tags?: string;
+    screenshot?: string;
+    search_results?: string;
     categoryId: string;
     isFavorite: string;
     isArchived: string;
@@ -283,10 +289,12 @@ export async function updateBookmark(
         url,
         description,
         categoryId: categoryId === "none" ? null : categoryId,
-        search_results: search_results || null,
+        search_results: search_results === undefined ? undefined : search_results || null,
         overview,
         favicon,
         ogImage,
+        tags: formData.tags,
+        screenshot: formData.screenshot === undefined ? undefined : formData.screenshot || null,
         isFavorite,
         isArchived,
       })
