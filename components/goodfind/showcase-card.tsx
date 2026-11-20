@@ -28,25 +28,22 @@ export function ShowcaseCard({ resource, onOpen }: { resource: ShowcaseResource;
       <span className="showcase-emblem"><ShowcaseLogo resource={resource} size={56} /></span>
     </div>
   );
+  const illustration = resource.artworkUrl
+    ? <ResourceImage className="showcase-preview" width={720} height={490} loading="lazy" src={resource.artworkUrl} alt="" fallback={art} />
+    : art;
 
   return (
     <article className="showcase-card" style={{ "--resource-accent": resource.accent } as CSSProperties}>
       <div className="showcase-artwork">
-          {resource.screenshot ? (
-            <ResourceImage className="showcase-preview" width={480} height={300} loading="lazy" src={resource.screenshot} alt="" fallback={art} />
-          ) : art}
+        <ResourceImage className="showcase-preview" width={720} height={490} loading="lazy" src={resource.screenshot} alt="" fallback={illustration} />
+        {(resource.screenshot || resource.artworkUrl) && <span className="showcase-card-identity" aria-hidden="true"><ShowcaseLogo resource={resource} size={21} /></span>}
       </div>
       <div className="showcase-card-copy">
-          <div className="showcase-card-title-row">
-            <h2>{resource.title}</h2>
-            <span className="showcase-card-arrow" aria-hidden="true"><ArrowUpRight size={18} /></span>
-          </div>
-          <p>{resource.description || "Open the resource for more information."}</p>
-          {resource.tags.length > 0 && (
-            <ul className="showcase-tags" aria-label="Resource tags">
-              {resource.tags.slice(0, 2).map((tag) => <li key={tag}>{tag}</li>)}
-            </ul>
-          )}
+        <div className="showcase-card-title-row">
+          <h2>{resource.title}</h2>
+          <span className="showcase-card-arrow" aria-hidden="true"><ArrowUpRight size={18} /></span>
+        </div>
+        <p>{resource.description || "Open the resource for more information."}</p>
       </div>
       <button className="showcase-card-button" type="button" aria-label={`View ${resource.title} details`} aria-haspopup="dialog" onClick={(event) => onOpen(event.currentTarget)} />
     </article>

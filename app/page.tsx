@@ -1,6 +1,6 @@
 import { Showcase } from "@/components/goodfind/showcase";
 import { getShowcaseBookmarks } from "@/lib/data";
-import { githubResourceUrl, isShowcaseCategory, readShowcaseTags, showcaseCategories, showcaseCategory } from "@/lib/showcase";
+import { githubResourceUrl, isShowcaseCategory, readShowcaseTags, showcaseCategories, showcaseCategory, showcaseImageUrl } from "@/lib/showcase";
 import type { Artwork, ShowcaseResource } from "@/lib/showcase";
 import { getResourceStyle } from "@/lib/showcase-catalog";
 import { isBookmarkUrl } from "@/lib/utils";
@@ -40,8 +40,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
         url: bookmark.url,
         favicon,
         fallbackFavicon: favicon === bundledFavicon ? null : bundledFavicon,
-        screenshot: bookmark.screenshot?.startsWith("/resources/") || isBookmarkUrl(bookmark.screenshot)
-          ? bookmark.screenshot : null,
+        screenshot: showcaseImageUrl(bookmark.screenshot),
+        artworkUrl: metadata.artworkUrl,
+        recommendation: metadata.recommendation,
         tags,
         platforms: bookmark.tags === null ? editorial?.platforms ?? [] : metadata.platforms,
         github: metadata.github ?? (bookmark.tags === null ? githubResourceUrl(editorial?.github) : null) ?? githubResourceUrl(bookmark.url),

@@ -12,7 +12,7 @@ Built with modern web technologies and designed with a focus on user experience,
 - **Beautiful UI**: Responsive design with dark/light mode support
 - **Admin Dashboard**: Powerful tools for content management
 
-The homepage is a four-category showcase for AI, Software, Gaming, and Media. Existing categories remain editable from the admin. Resources from other categories appear under Software unless a category or tag matches one of the other showcase groups. In the bookmark editor, expand **Showcase details** to set tags, platforms, a GitHub repository, or a permitted screenshot. The Overview field can include public recommendations. Existing private notes stay in the database.
+The homepage is a four-category showcase for AI, Software, Gaming, and Media. Existing categories remain editable from the admin. Resources from other categories appear under Software unless a category or tag matches one of the other showcase groups. In the bookmark editor, expand **Showcase details** to edit tags, platforms, a GitHub repository, artwork, or a public recommendation. Add a permitted product screenshot or an authentic brand image. Goodfind otherwise displays the resource logo with a supporting background. Existing private notes stay in the database.
 
 The optional local seed adds example resources without replacing existing records. Where a resource has no screenshot, Goodfind uses its own artwork. Bundled marks are from [Simple Icons](https://simpleicons.org/) and official resource sites where available.
 

@@ -3,7 +3,7 @@
 import { AnimatePresence, LayoutGroup, MotionConfig, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight, Github, Search, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { CSSProperties, KeyboardEvent } from "react";
+import type { CSSProperties, KeyboardEvent, PointerEvent } from "react";
 import Markdown from "react-markdown";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Brand } from "./brand";
@@ -26,40 +26,56 @@ function matchCategory(resources: ShowcaseResource[], preferred: ShowcaseCategor
   return showcaseCategories.find(({ id }) => resources.some((resource) => resource.category === id && matchesQuery(resource, query)))?.id ?? preferred;
 }
 
-function ResourceDetails({ resource, onClose, restoreFocus }: {
+function ResourceDetails({ resource, open, pointerFocus, onOpenChange, restoreFocus }: {
   resource: ShowcaseResource;
-  onClose: () => void;
+  open: boolean;
+  pointerFocus: boolean;
+  onOpenChange: (open: boolean) => void;
   restoreFocus: () => void;
 }) {
   const source = resource.github;
   const showSource = source && githubResourceUrl(resource.url) !== source;
+  const title = useRef<HTMLHeadingElement>(null);
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="showcase-dialog" onCloseAutoFocus={(event) => { event.preventDefault(); restoreFocus(); }}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="showcase-dialog showcase-resource-dialog"
+        data-pointer-focus={pointerFocus || undefined}
+        onOpenAutoFocus={(event) => { event.preventDefault(); title.current?.focus({ preventScroll: true }); }}
+        onCloseAutoFocus={(event) => { event.preventDefault(); restoreFocus(); }}
+      >
         <div className="showcase-dialog-heading" style={{ "--resource-accent": resource.accent } as CSSProperties}>
           <div className="showcase-dialog-icon"><ShowcaseLogo resource={resource} size={32} /></div>
           <div>
-            <DialogTitle>{resource.title}</DialogTitle>
+            <DialogTitle ref={title} tabIndex={-1}>{resource.title}</DialogTitle>
             <DialogDescription>{resource.description || `${resource.title} is in the Goodfind collection.`}</DialogDescription>
           </div>
         </div>
-        {resource.overview?.trim() && resource.overview.trim() !== resource.description?.trim() && (
-          <section className="showcase-detail-section">
-            <h3>What it’s useful for</h3>
-            <div className="showcase-detail-prose"><Markdown>{resource.overview}</Markdown></div>
-          </section>
-        )}
-        <div className="showcase-detail-meta">
-          <section className="showcase-detail-section">
-            <h3>Platforms</h3>
-            {resource.platforms.length ? <ul className="showcase-tags">{resource.platforms.map((platform) => <li key={platform}>{platform}</li>)}</ul> : <p>Check the official site for compatibility.</p>}
-          </section>
-          {resource.tags.length > 0 && (
+        <div className="showcase-detail-body">
+          {resource.overview?.trim() && resource.overview.trim() !== resource.description?.trim() && (
             <section className="showcase-detail-section">
-              <h3>Tags</h3>
-              <ul className="showcase-tags">{resource.tags.map((tag) => <li key={tag}>{tag}</li>)}</ul>
+              <h3>What it’s useful for</h3>
+              <div className="showcase-detail-prose"><Markdown>{resource.overview}</Markdown></div>
             </section>
           )}
+          {resource.recommendation && (
+            <section className="showcase-detail-section showcase-recommendation">
+              <h3>My recommendation</h3>
+              <p>{resource.recommendation}</p>
+            </section>
+          )}
+          <div className="showcase-detail-meta">
+            <section className="showcase-detail-section">
+              <h3>Platforms</h3>
+              {resource.platforms.length ? <ul className="showcase-tags">{resource.platforms.map((platform) => <li key={platform}>{platform}</li>)}</ul> : <p>Check the official site for compatibility.</p>}
+            </section>
+            {resource.tags.length > 0 && (
+              <section className="showcase-detail-section">
+                <h3>Tags</h3>
+                <ul className="showcase-tags">{resource.tags.map((tag) => <li key={tag}>{tag}</li>)}</ul>
+              </section>
+            )}
+          </div>
         </div>
         <div className="showcase-dialog-links">
           <a className="showcase-link-primary" href={resource.url} target="_blank" rel="noopener noreferrer">Official website<ArrowUpRight aria-hidden="true" size={16} /></a>
@@ -82,8 +98,12 @@ export function Showcase({ resources, initialCategory, pinnedCategory, initialSe
   const [draft, setDraft] = useState(initialSearch);
   const [searchOpen, setSearchOpen] = useState(false);
   const [detail, setDetail] = useState<ShowcaseResource | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [pointerFocus, setPointerFocus] = useState(false);
   const [scroll, setScroll] = useState({ back: false, next: false });
   const rail = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ id: number; x: number; left: number } | null>(null);
+  const dragged = useRef(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const searchTrigger = useRef<HTMLButtonElement>(null);
   const tabs = useRef<Partial<Record<ShowcaseCategory, HTMLButtonElement | null>>>({});
@@ -96,21 +116,41 @@ export function Showcase({ resources, initialCategory, pinnedCategory, initialSe
     const next = node.scrollWidth - node.clientWidth - node.scrollLeft > 3;
     setScroll((previous) => previous.back === back && previous.next === next ? previous : { back, next });
   }, []);
+  const measureRail = useCallback(() => {
+    const node = rail.current;
+    if (!node) return;
+    const cards = node.querySelectorAll(".showcase-card-item");
+    let trailingSpace = 0;
+    if (cards.length > 1) {
+      const first = cards[0].getBoundingClientRect();
+      const second = cards[1].getBoundingClientRect();
+      const last = cards[cards.length - 1].getBoundingClientRect();
+      const startPadding = parseFloat(getComputedStyle(node).paddingInlineStart);
+      const stride = second.left - first.left;
+      const naturalEnd = last.right - first.left + startPadding - node.clientWidth;
+      // The spacer extends from the last card's outer edge to the final snap position.
+      if (naturalEnd > 1 && stride > 0) {
+        trailingSpace = Math.max(0, Math.ceil((naturalEnd - 0.5) / stride) * stride - naturalEnd);
+      }
+    }
+    node.style.setProperty("--sc-trailing-space", `${trailingSpace}px`);
+    syncArrows();
+  }, [syncArrows]);
   const resetRail = useCallback((node: HTMLDivElement | null) => {
     if (node && rail.current) {
       rail.current.scrollLeft = 0;
-      syncArrows();
+      measureRail();
     }
-  }, [syncArrows]);
+  }, [measureRail]);
 
   useEffect(() => {
     const node = rail.current;
     if (!node) return;
-    const observer = new ResizeObserver(syncArrows);
+    const observer = new ResizeObserver(measureRail);
     observer.observe(node);
-    syncArrows();
+    measureRail();
     return () => observer.disconnect();
-  }, [syncArrows, shown.length]);
+  }, [measureRail, shown.length]);
 
   useEffect(() => {
     function shortcut(event: globalThis.KeyboardEvent) {
@@ -164,12 +204,63 @@ export function Showcase({ resources, initialCategory, pinnedCategory, initialSe
     node.scrollBy({ left: direction * (item.getBoundingClientRect().width + gap), behavior: reduceMotion ? "auto" : "smooth" });
   }
 
-  const tabMotion = reduceMotion ? { duration: 0 } : { type: "spring" as const, stiffness: 420, damping: 36 };
-  const step = reduceMotion ? 0 : 0.034;
+  function startRailDrag(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== "mouse" || event.button !== 0) return;
+    drag.current = null;
+    dragged.current = false;
+    const node = event.currentTarget;
+    if (node.scrollWidth <= node.clientWidth) return;
+    drag.current = { id: event.pointerId, x: event.clientX, left: node.scrollLeft };
+  }
+
+  function moveRailDrag(event: PointerEvent<HTMLDivElement>) {
+    const start = drag.current;
+    if (!start || start.id !== event.pointerId || !event.buttons) return;
+    const delta = event.clientX - start.x;
+    if (!dragged.current) {
+      if (Math.abs(delta) < 7) return;
+      dragged.current = true;
+      event.currentTarget.dataset.dragging = "true";
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+    event.preventDefault();
+    event.currentTarget.scrollLeft = start.left - delta;
+  }
+
+  function endRailDrag(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerId !== drag.current?.id) return;
+    drag.current = null;
+    delete event.currentTarget.dataset.dragging;
+  }
+
+  function navigateRail(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.target !== event.currentTarget) return;
+    const { key, currentTarget } = event;
+    if (key === "ArrowLeft" || key === "ArrowRight") {
+      event.preventDefault();
+      moveRail(key === "ArrowLeft" ? -1 : 1);
+    } else if (key === "Home" || key === "End") {
+      event.preventDefault();
+      currentTarget.scrollTo({ left: key === "Home" ? 0 : currentTarget.scrollWidth, behavior: reduceMotion ? "auto" : "smooth" });
+    }
+  }
+
+  const easing = [.22, .68, .24, 1] as const;
+  const tabMotion = reduceMotion ? { duration: 0 } : { duration: 0.24, ease: easing };
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="showcase">
+      <div
+        className="showcase"
+        data-pointer-focus={pointerFocus || undefined}
+        onPointerDownCapture={() => setPointerFocus(true)}
+        onKeyDownCapture={(event) => {
+          // Bare modifiers can match :focus-visible in Chromium without moving focus.
+          if (/^(Tab|Arrow(Left|Right|Up|Down)|Home|End|Enter| |Escape)$/.test(event.key)) {
+            setPointerFocus(false);
+          }
+        }}
+      >
         <a className="showcase-skip" href="#main">Skip to resources</a>
         <header className="showcase-header">
           <div className="showcase-frame showcase-header-inner">
@@ -211,38 +302,62 @@ export function Showcase({ resources, initialCategory, pinnedCategory, initialSe
           </div>
 
           <section role="tabpanel" id={resultsId} aria-labelledby={`showcase-tab-${category}`} className="showcase-results">
-            <div className="showcase-results-top">
-              <div className="showcase-status" role="status">
-                {shown.length} {shown.length === 1 ? "resource" : "resources"}{search && <> for “{search}”</>}
-              </div>
-              {search && <button className="showcase-clear" type="button" onClick={() => applySearch("")}><X size={14} aria-hidden="true" /> Clear search</button>}
+            <div className="sr-only" role="status">
+              {shown.length} {shown.length === 1 ? "resource" : "resources"}{search && <> for “{search}”</>}
             </div>
-            <div id={railId} ref={rail} className="showcase-rail" onScroll={syncArrows} aria-label={`${categoryLabel(category)} resources`}>
+            {search && (
+              <div className="showcase-results-top">
+                <button className="showcase-clear" type="button" onClick={() => applySearch("")}><X size={14} aria-hidden="true" /> Clear search</button>
+              </div>
+            )}
+            <div
+              id={railId}
+              ref={rail}
+              className="showcase-rail"
+              role="region"
+              tabIndex={shown.length ? 0 : undefined}
+              onScroll={syncArrows}
+              onKeyDown={navigateRail}
+              onPointerDown={startRailDrag}
+              onPointerMove={moveRailDrag}
+              onPointerUp={endRailDrag}
+              onPointerCancel={endRailDrag}
+              onLostPointerCapture={endRailDrag}
+              onClickCapture={(event) => {
+                if (dragged.current && event.detail > 0) {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  dragged.current = false;
+                }
+              }}
+              aria-label={`${categoryLabel(category)} resources`}
+            >
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div
                   key={`${category}:${search}`}
-                  initial={{ opacity: reduceMotion ? 1 : 0, y: reduceMotion ? 0 : 6 }}
+                  initial={{ opacity: reduceMotion ? 1 : 0.8, y: reduceMotion ? 0 : 3 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: reduceMotion ? 1 : 0 }}
-                  transition={{ duration: reduceMotion ? 0 : 0.14 }}
+                  exit={{ opacity: reduceMotion ? 1 : 0.58, transition: { duration: reduceMotion ? 0 : 0.1 } }}
+                  transition={{ duration: reduceMotion ? 0 : 0.17, ease: easing }}
                   ref={resetRail}
-                  onAnimationComplete={syncArrows}
+                  onAnimationComplete={measureRail}
                 >
                   {shown.length ? (
                     <motion.ul
                       className="showcase-cards"
                       initial="hidden"
                       animate="visible"
-                      variants={{ hidden: {}, visible: { transition: { staggerChildren: step } } }}
                     >
-                      {shown.map((resource) => (
+                      {shown.map((resource, index) => (
                         <motion.li
                           className="showcase-card-item"
                           key={resource.id}
-                          variants={{ hidden: { opacity: reduceMotion ? 1 : 0, y: reduceMotion ? 0 : 6 }, visible: { opacity: 1, y: 0 } }}
-                          transition={{ duration: reduceMotion ? 0 : 0.22 }}
+                          variants={{
+                            hidden: { opacity: reduceMotion ? 1 : 0.72, y: reduceMotion ? 0 : 5 },
+                            visible: { opacity: 1, y: 0, transition: { duration: reduceMotion ? 0 : 0.2, delay: reduceMotion ? 0 : Math.min(index, 5) * 0.025, ease: easing } },
+                          }}
                         >
-                          <ShowcaseCard resource={resource} onOpen={(button) => { trigger.current = button; setDetail(resource); }} />
+                          <ShowcaseCard resource={resource} onOpen={(button) => { trigger.current = button; setDetail(resource); setDetailOpen(true); }} />
                         </motion.li>
                       ))}
                     </motion.ul>
@@ -265,9 +380,17 @@ export function Showcase({ resources, initialCategory, pinnedCategory, initialSe
           </section>
         </main>
 
-        {detail && <ResourceDetails resource={detail} onClose={() => setDetail(null)} restoreFocus={() => trigger.current?.focus({ preventScroll: true })} />}
+        {detail && (
+          <ResourceDetails
+            resource={detail}
+            open={detailOpen}
+            pointerFocus={pointerFocus}
+            onOpenChange={setDetailOpen}
+            restoreFocus={() => { trigger.current?.focus({ preventScroll: true }); setDetail(null); }}
+          />
+        )}
         <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
-          <DialogContent className="showcase-dialog showcase-search-dialog" onCloseAutoFocus={(event) => { event.preventDefault(); searchTrigger.current?.focus({ preventScroll: true }); }}>
+          <DialogContent className="showcase-dialog showcase-search-dialog" data-pointer-focus={pointerFocus || undefined} onCloseAutoFocus={(event) => { event.preventDefault(); searchTrigger.current?.focus({ preventScroll: true }); }}>
             <DialogTitle>Search Goodfind</DialogTitle>
             <DialogDescription>Filter the collection by name, description, or tag.</DialogDescription>
             <form onSubmit={(event) => { event.preventDefault(); applySearch(draft); }} role="search">
