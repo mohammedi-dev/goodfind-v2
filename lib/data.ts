@@ -1,9 +1,28 @@
 import { db } from "@/db/client";
 import { bookmarks, categories } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import type { DiscoveryResource } from "@/lib/discovery";
 
 export type Bookmark = typeof bookmarks.$inferSelect;
 export type Category = typeof categories.$inferSelect;
+
+export async function getDiscoveryResources(): Promise<DiscoveryResource[]> {
+  return db.select({
+    id: bookmarks.id,
+    slug: bookmarks.slug,
+    title: bookmarks.title,
+    url: bookmarks.url,
+    description: bookmarks.description,
+    overview: bookmarks.overview,
+    notes: bookmarks.notes,
+    tags: bookmarks.tags,
+    favicon: bookmarks.favicon,
+    createdAt: bookmarks.createdAt,
+    isFavorite: bookmarks.isFavorite,
+    isArchived: bookmarks.isArchived,
+    category: { id: categories.id, slug: categories.slug, name: categories.name },
+  }).from(bookmarks).leftJoin(categories, eq(bookmarks.categoryId, categories.id));
+}
 
 export async function getAllBookmarks(): Promise<(Bookmark & { category: Category | null })[]> {
   const results = await db

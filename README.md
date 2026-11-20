@@ -1,9 +1,6 @@
-# 9d8/directory
+# Goodfind
 
-![CleanShot 2024-12-04 at 16 52 10@2x](https://github.com/user-attachments/assets/6fcd8458-eb07-411d-b813-212b5b26b67e)
-
-
-A modern, AI-powered Next.js directory template for creating beautiful resource collections and bookmarks. Perfect for creating your own curated list of resources, bookmarks, or link directories. View the live demo at [directory.9d8.dev](https://directory.9d8.dev).
+A Next.js resource library for discovering useful tools, learning resources, and software. Goodfind started from the MIT-licensed [9d8/directory template](https://github.com/9d8dev/directory).
 
 ## Overview
 
@@ -14,6 +11,8 @@ Built with modern web technologies and designed with a focus on user experience,
 - **Newsletter**: Built-in email subscription with Loops integration
 - **Beautiful UI**: Responsive design with dark/light mode support
 - **Admin Dashboard**: Powerful tools for content management
+
+The homepage uses the shared tokens in `app/discovery.css`, Manrope, and the existing Radix and Lucide components. The topic hierarchy and collection rules live in `lib/discovery.ts`. They match the library’s existing category slugs and comma-separated bookmark tags, so adding a browse topic requires no database migration. Admin-created categories continue to work independently.
 
 ## Tech Stack
 

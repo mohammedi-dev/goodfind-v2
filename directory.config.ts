@@ -1,7 +1,7 @@
 export const directory = {
-  baseUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://directory.9d8.dev",
-  name: "9d8/directory",
-  title: "9d8/directory | AI-powered Next.js Directory Template by 9d8",
+  baseUrl: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+  name: "Goodfind",
+  title: "Goodfind — The internet, well curated",
   description:
-    "Use this template to display a collection of resources or bookmarks. Create a directory website in little to no time.",
+    "Explore a curated library of useful software, AI tools, learning resources, and hidden gems across the web.",
 };

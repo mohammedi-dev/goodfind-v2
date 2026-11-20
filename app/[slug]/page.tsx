@@ -35,11 +35,11 @@ export async function generateMetadata(
   const previousImages = (await parent).openGraph?.images || [];
 
   return {
-    title: `${bookmark.title} | Directory`,
+    title: `${bookmark.title} | Goodfind`,
     description:
       bookmark.description ||
       bookmark.overview ||
-      `A curated bookmark from Directory`,
+      `A curated resource from Goodfind`,
     openGraph: {
       title: bookmark.title,
       description: bookmark.description || bookmark.overview || undefined,
