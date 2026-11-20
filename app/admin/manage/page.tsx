@@ -7,18 +7,14 @@ import Link from "next/link";
 interface Bookmark {
   url: string;
   slug: string;
-  name: string;
+  title: string;
   description: string | null;
-  category: string | null;
-  use_case: string | null;
-  how_to_use: string | null;
+  category: { name: string } | null;
   overview: string | null;
-  screenshot_url: string | null;
 }
 
 export default function ManageBookmarks() {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
-  const [filteredBookmarks, setFilteredBookmarks] = useState<Bookmark[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -32,7 +28,6 @@ export default function ManageBookmarks() {
       }
       const data = await response.json();
       setBookmarks(data);
-      setFilteredBookmarks(data);
       setError(null);
     } catch (err) {
       setError("Failed to load bookmarks");
@@ -42,27 +37,11 @@ export default function ManageBookmarks() {
     }
   };
 
-  // Handle search
-  const handleSearch = (searchValue: string) => {
-    setSearchTerm(searchValue);
-    if (!searchValue.trim()) {
-      setFilteredBookmarks(bookmarks);
-      return;
-    }
-
-    const searchLower = searchValue.toLowerCase();
-    const filtered = bookmarks.filter((bookmark) => {
-      return (
-        bookmark.name.toLowerCase().includes(searchLower) ||
-        bookmark.url.toLowerCase().includes(searchLower) ||
-        bookmark.description?.toLowerCase().includes(searchLower) ||
-        bookmark.category?.toLowerCase().includes(searchLower) ||
-        bookmark.use_case?.toLowerCase().includes(searchLower) ||
-        bookmark.overview?.toLowerCase().includes(searchLower)
-      );
-    });
-    setFilteredBookmarks(filtered);
-  };
+  const searchLower = searchTerm.trim().toLowerCase();
+  const filteredBookmarks = bookmarks.filter((bookmark) =>
+    [bookmark.title, bookmark.url, bookmark.description, bookmark.category?.name, bookmark.overview]
+      .some((value) => value?.toLowerCase().includes(searchLower)),
+  );
 
   // Delete bookmark
   const handleDelete = async (url: string) => {
@@ -137,7 +116,7 @@ export default function ManageBookmarks() {
               type="text"
               placeholder="Search bookmarks..."
               value={searchTerm}
-              onChange={(e) => handleSearch(e.target.value)}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full rounded-lg border p-3 pl-10 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
             />
             <svg
@@ -170,7 +149,7 @@ export default function ManageBookmarks() {
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-xl font-semibold">{bookmark.name}</h2>
+                  <h2 className="text-xl font-semibold">{bookmark.title}</h2>
                   <a
                     href={bookmark.url}
                     target="_blank"
@@ -184,7 +163,7 @@ export default function ManageBookmarks() {
                   )}
                   {bookmark.category && (
                     <p className="mt-1 text-sm text-gray-500">
-                      Category: {bookmark.category}
+                      Category: {bookmark.category.name}
                     </p>
                   )}
                 </div>

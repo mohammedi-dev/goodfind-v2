@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Logo from "@/public/logo.svg";
 import "./globals.css";
-import { Manrope as Font } from "next/font/google";
+import localFont from "next/font/local";
 
 import { Button } from "@/components/ui/button";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -25,8 +25,9 @@ import {
 
 import { Mail } from "lucide-react";
 
-const font = Font({
-  subsets: ["latin"],
+const font = localFont({
+  src: "./fonts/Manrope.ttf",
+  weight: "200 800",
   display: "swap",
 });
 
@@ -42,7 +43,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${font.className} antialiased`}>
         <ThemeProvider
           attribute="class"

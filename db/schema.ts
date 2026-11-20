@@ -12,7 +12,7 @@ export const categories = sqliteTable("categories", {
   icon: text("icon"), // For UI customization
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
+    .default(sql`(unixepoch())`),
   updatedAt: integer("updated_at", { mode: "timestamp" }),
 });
 

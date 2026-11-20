@@ -56,17 +56,16 @@ export function EmailForm() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to subscribe");
+        const { error } = await response.json().catch(() => ({}));
+        throw new Error(error || "Failed to subscribe. Please try again.");
       }
 
-      const data = await response.json();
-      console.log("Submitted email:", values.email, "Contact ID:", data.id);
       setIsSubmitted(true);
     } catch (error) {
       console.error("Error submitting email:", error);
       form.setError("email", {
         type: "manual",
-        message: "Failed to subscribe. Please try again.",
+        message: error instanceof Error ? error.message : "Failed to subscribe. Please try again.",
       });
     } finally {
       setIsLoading(false);

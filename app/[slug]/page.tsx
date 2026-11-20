@@ -11,6 +11,7 @@ import { Section } from "@/components/craft";
 import { Button } from "@/components/ui/button";
 import { BackButton } from "@/components/back-button";
 import { Badge } from "@/components/ui/badge";
+import { ResourceImage } from "@/components/resource-image";
 import { ExternalLink, Calendar, Bookmark } from "lucide-react";
 
 // Metadata
@@ -18,14 +19,14 @@ import { Metadata, ResolvingMetadata } from "next";
 import Markdown from "react-markdown";
 
 type Props = {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 };
 
 export async function generateMetadata(
   { params }: Props,
   parent: ResolvingMetadata,
 ): Promise<Metadata> {
-  const bookmark = await getBookmarkBySlug(params.slug);
+  const bookmark = await getBookmarkBySlug((await params).slug);
 
   if (!bookmark) {
     notFound();
@@ -58,7 +59,7 @@ export async function generateMetadata(
 }
 
 export default async function Page({ params }: Props) {
-  const bookmark = await getBookmarkBySlug(params.slug);
+  const bookmark = await getBookmarkBySlug((await params).slug);
 
   if (!bookmark) {
     notFound();
@@ -86,22 +87,18 @@ export default async function Page({ params }: Props) {
         {/* Preview Image or Fallback */}
         <div className="overflow-hidden rounded-xl border bg-muted">
           <div className="relative aspect-[21/9]">
-            {bookmark.ogImage ? (
-              <img
-                src={bookmark.ogImage}
-                alt="Open Graph preview"
-                width={300}
-                height={200}
-                className="rounded-lg object-cover"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center">
-                <Bookmark
-                  className="h-16 w-16 text-muted-foreground"
-                  aria-hidden="true"
-                />
-              </div>
-            )}
+            <ResourceImage
+              src={bookmark.ogImage}
+              alt="Open Graph preview"
+              width={300}
+              height={200}
+              className="rounded-lg object-cover"
+              fallback={
+                <div className="flex h-full w-full items-center justify-center">
+                  <Bookmark className="h-16 w-16 text-muted-foreground" aria-hidden="true" />
+                </div>
+              }
+            />
           </div>
         </div>
 
@@ -120,22 +117,18 @@ export default async function Page({ params }: Props) {
                   </p>
                 )}
               </div>
-              {bookmark.favicon ? (
-                <img
-                  src={bookmark.favicon}
-                  alt="Site favicon"
-                  width={16}
-                  height={16}
-                  className="h-4 w-4"
-                />
-              ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg border bg-background p-1">
-                  <Bookmark
-                    className="h-4 w-4 text-muted-foreground"
-                    aria-hidden="true"
-                  />
-                </div>
-              )}
+              <ResourceImage
+                src={bookmark.favicon}
+                alt="Site favicon"
+                width={16}
+                height={16}
+                className="h-4 w-4"
+                fallback={
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg border bg-background p-1">
+                    <Bookmark className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  </div>
+                }
+              />
             </div>
 
             {/* Metadata */}

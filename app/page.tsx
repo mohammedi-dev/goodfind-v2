@@ -17,8 +17,11 @@ import Balancer from "react-wrap-balancer";
 export default async function Home({
   searchParams,
 }: {
-  searchParams: { category?: string; search?: string };
+  searchParams: Promise<{ category?: string | string[]; search?: string | string[] }>;
 }) {
+  const query = await searchParams;
+  const category = typeof query.category === "string" ? query.category : query.category?.[0];
+  const search = typeof query.search === "string" ? query.search : query.search?.[0];
   const [bookmarks, categories] = await Promise.all([
     getAllBookmarks(),
     getAllCategories(),
@@ -27,12 +30,11 @@ export default async function Home({
   const filteredBookmarks = bookmarks
     .filter(
       (bookmark) =>
-        !searchParams.category ||
-        bookmark.category?.id.toString() === searchParams.category,
+        !category || bookmark.category?.id.toString() === category,
     )
     .filter((bookmark) => {
-      if (!searchParams.search) return true;
-      const searchTerm = searchParams.search.toLowerCase();
+      if (!search) return true;
+      const searchTerm = search.toLowerCase();
       return (
         bookmark.title.toLowerCase().includes(searchTerm) ||
         bookmark.description?.toLowerCase().includes(searchTerm) ||
@@ -101,9 +103,8 @@ export default async function Home({
             {filteredBookmarks.length === 0 && (
               <div className="py-8 text-center text-gray-500">
                 No bookmarks found
-                {searchParams.search && ` matching "${searchParams.search}"`}
-                {searchParams.category &&
-                  ` in category "${categories.find((c) => c.id.toString() === searchParams.category)?.name}"`}
+                {search && ` matching "${search}"`}
+                {category && ` in category "${categories.find((c) => c.id.toString() === category)?.name || category}"`}
               </div>
             )}
           </div>

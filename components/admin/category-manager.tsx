@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useFormState } from "react-dom";
 import {
   createCategory,
   updateCategory,
@@ -41,10 +40,19 @@ export function CategoryManager({ categories }: CategoryManagerProps) {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(
     null,
   );
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  const handleCreate = async (_: ActionState | null, formData: FormData) => {
+  const reportResult = (result: ActionState, close: (open: boolean) => void) => {
+    if (result.error) toast.error(result.error);
+    if (result.success) {
+      toast.success("Category updated successfully!");
+      close(false);
+    }
+  };
+
+  const handleCreate = async (formData: FormData) => {
     const payload = {
       name: formData.get("name") as string,
       description: formData.get("description") as string,
@@ -52,44 +60,31 @@ export function CategoryManager({ categories }: CategoryManagerProps) {
       color: formData.get("color") as string,
       icon: formData.get("icon") as string,
     };
-    return createCategory(null, payload);
+    reportResult(await createCategory(null, payload), setIsCreateDialogOpen);
   };
 
-  const handleUpdate = async (_: ActionState | null, formData: FormData) => {
+  const handleUpdate = async (formData: FormData) => {
     const payload = {
-      id: selectedCategory?.id as string,
+      id: formData.get("id") as string,
       name: formData.get("name") as string,
       description: formData.get("description") as string,
       slug: formData.get("slug") as string,
       color: formData.get("color") as string,
       icon: formData.get("icon") as string,
     };
-    return updateCategory(null, payload);
+    reportResult(await updateCategory(null, payload), setIsEditDialogOpen);
   };
 
-  const handleDelete = async (_: ActionState | null, formData: FormData) => {
-    return deleteCategory(null, { id: formData.get("id") as string });
+  const handleDelete = async (formData: FormData) => {
+    const id = formData.get("id") as string;
+    reportResult(await deleteCategory(null, { id }), setIsDeleteDialogOpen);
   };
-
-  const [createState, createAction] = useFormState(handleCreate, null);
-  const [updateState, updateAction] = useFormState(handleUpdate, null);
-  const [deleteState, deleteAction] = useFormState(handleDelete, null);
-
-  // Handle form submission results
-  if (createState?.success || updateState?.success || deleteState?.success) {
-    toast.success("Category updated successfully!");
-    window.location.reload(); // Refresh to show changes
-  }
-
-  if (createState?.error || updateState?.error || deleteState?.error) {
-    toast.error(createState?.error || updateState?.error || deleteState?.error);
-  }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Categories</h2>
-        <Dialog>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -103,7 +98,7 @@ export function CategoryManager({ categories }: CategoryManagerProps) {
                 Create a new category for organizing bookmarks.
               </DialogDescription>
             </DialogHeader>
-            <form action={createAction} className="space-y-4">
+            <form action={handleCreate} className="space-y-4">
               <div>
                 <Label htmlFor="name">Name</Label>
                 <Input
@@ -218,7 +213,7 @@ export function CategoryManager({ categories }: CategoryManagerProps) {
             <DialogTitle>Edit Category</DialogTitle>
             <DialogDescription>Update the category details.</DialogDescription>
           </DialogHeader>
-          <form action={updateAction} className="space-y-4">
+          <form action={handleUpdate} className="space-y-4">
             <input type="hidden" name="id" value={selectedCategory?.id} />
             <div>
               <Label htmlFor="edit-name">Name</Label>
@@ -294,7 +289,7 @@ export function CategoryManager({ categories }: CategoryManagerProps) {
               be undone.
             </DialogDescription>
           </DialogHeader>
-          <form action={deleteAction}>
+          <form action={handleDelete}>
             <input type="hidden" name="id" value={selectedCategory?.id} />
             <DialogFooter>
               <Button

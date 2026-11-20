@@ -36,7 +36,6 @@ import {
   deleteBookmark,
   generateContent,
   bulkUploadBookmarks,
-  type ActionState,
 } from "@/lib/actions";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -96,9 +95,6 @@ export function BookmarkManager({
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isBulkSheetOpen, setIsBulkSheetOpen] = useState(false);
 
-  const [bulkUploadState, setBulkUploadState] = useState<ActionState | null>(
-    null,
-  );
   const [isUploading, setIsUploading] = useState(false);
 
   const [bookmarkToDelete, setBookmarkToDelete] =
@@ -108,31 +104,6 @@ export function BookmarkManager({
   const [selectedBookmark, setSelectedBookmark] =
     useState<BookmarkWithCategory | null>(null);
   const [isNewBookmark, setIsNewBookmark] = useState(true);
-
-  useEffect(() => {
-    if (bulkUploadState?.success) {
-      if (
-        bulkUploadState.progress?.current === bulkUploadState.progress?.total
-      ) {
-        toast.success(
-          bulkUploadState.message || "Bookmarks uploaded successfully",
-        );
-        setIsUploading(false);
-        setIsSheetOpen(false);
-        setBulkUploadState(null);
-      } else if (bulkUploadState.progress?.lastAdded) {
-        toast.success(`Added: ${bulkUploadState.progress.lastAdded}`);
-      }
-    } else if (bulkUploadState?.error) {
-      toast.error(bulkUploadState.error);
-      if (
-        !bulkUploadState.progress ||
-        bulkUploadState.progress.current === bulkUploadState.progress.total
-      ) {
-        setIsUploading(false);
-      }
-    }
-  }, [bulkUploadState]);
 
   // Form state management
   const [formData, setFormData] = useState({
@@ -336,6 +307,7 @@ export function BookmarkManager({
       return;
     }
 
+    setIsUploading(true);
     try {
       const text = await file.text();
       const urls = text
@@ -352,18 +324,19 @@ export function BookmarkManager({
         toast.error(result.error || "Failed to upload bookmarks");
       }
 
-      setBulkUploadState(result);
     } catch (error) {
       toast.error("Failed to process the CSV file");
       console.error(error);
+    } finally {
+      setIsUploading(false);
     }
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Manage Bookmarks</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             onClick={() => setIsBulkSheetOpen(true)}
             size="sm"
@@ -447,7 +420,7 @@ export function BookmarkManager({
       </div>
 
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetContent className="w-full sm:max-w-xl">
+        <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
           <SheetHeader>
             <SheetTitle>
               {isNewBookmark ? "Add Bookmark" : "Edit Bookmark"}
@@ -657,7 +630,7 @@ export function BookmarkManager({
       </Sheet>
 
       <Sheet open={isBulkSheetOpen} onOpenChange={setIsBulkSheetOpen}>
-        <SheetContent className="w-full sm:max-w-xl">
+        <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
           <SheetHeader>
             <SheetTitle>Bulk Upload Bookmarks</SheetTitle>
             <SheetDescription>
@@ -692,12 +665,6 @@ export function BookmarkManager({
                       Processing URLs...
                     </span>
                   </div>
-                  {bulkUploadState?.progress && (
-                    <div className="text-sm text-muted-foreground">
-                      Processing {bulkUploadState.progress.current} of{" "}
-                      {bulkUploadState.progress.total} URLs
-                    </div>
-                  )}
                   <p className="text-sm text-muted-foreground">
                     This may take a while. Please keep this window open.
                   </p>

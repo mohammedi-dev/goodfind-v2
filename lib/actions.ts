@@ -2,10 +2,14 @@
 
 import { db } from "@/db/client";
 import { bookmarks, categories } from "@/db/schema";
-import { generateSlug } from "@/lib/utils";
+import { generateSlug, isBookmarkUrl } from "@/lib/utils";
+import { hasAdminSession } from "@/lib/admin-session";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import Exa from "exa-js";
+import { generateOverview, getUrlMetadata } from "@/lib/enrichment";
+
+const signInError = { error: "Admin sign-in required" };
 
 export type ActionState = {
   success?: boolean;
@@ -59,6 +63,7 @@ export async function createCategory(
     icon: string;
   },
 ): Promise<ActionState> {
+  if (!(await hasAdminSession())) return signInError;
   try {
     const name = formData.name;
     const description = formData.description;
@@ -96,6 +101,7 @@ export async function updateCategory(
     icon: string;
   },
 ): Promise<ActionState> {
+  if (!(await hasAdminSession())) return signInError;
   try {
     if (!formData) {
       return { error: "No form data provided" };
@@ -139,6 +145,7 @@ export async function deleteCategory(
     id: string;
   },
 ): Promise<ActionState> {
+  if (!(await hasAdminSession())) return signInError;
   try {
     if (!formData) {
       return { error: "No form data provided" };
@@ -178,6 +185,7 @@ export async function createBookmark(
     isArchived: string;
   },
 ): Promise<ActionState> {
+  if (!(await hasAdminSession())) return signInError;
   try {
     const title = formData.title;
     const description = formData.description;
@@ -190,6 +198,7 @@ export async function createBookmark(
     const categoryId = formData.categoryId;
     const isFavorite = formData.isFavorite === "true";
     const isArchived = formData.isArchived === "true";
+    if (!isBookmarkUrl(url)) return { error: "A valid HTTP(S) URL is required" };
 
     // Generate slug if not provided
     if (!slug) {
@@ -237,6 +246,7 @@ export async function updateBookmark(
     isArchived: string;
   },
 ): Promise<ActionState> {
+  if (!(await hasAdminSession())) return signInError;
   try {
     if (!formData) {
       return { error: "No form data provided" };
@@ -258,6 +268,7 @@ export async function updateBookmark(
     const categoryId = formData.categoryId;
     const isFavorite = formData.isFavorite === "true";
     const isArchived = formData.isArchived === "true";
+    if (!isBookmarkUrl(url)) return { error: "A valid HTTP(S) URL is required" };
 
     // Generate slug if not provided
     if (!slug) {
@@ -298,6 +309,7 @@ export async function deleteBookmark(
     url: string;
   },
 ): Promise<ActionState> {
+  if (!(await hasAdminSession())) return signInError;
   try {
     if (!formData) {
       return { error: "No form data provided" };
@@ -308,13 +320,13 @@ export async function deleteBookmark(
       return { error: "No bookmark ID provided" };
     }
 
-    const url = formData.url;
-
-    await db.delete(bookmarks).where(eq(bookmarks.id, Number(id)));
+    const [deleted] = await db.delete(bookmarks).where(eq(bookmarks.id, Number(id)))
+      .returning({ slug: bookmarks.slug });
+    if (!deleted) return { error: "Bookmark not found" };
 
     revalidatePath("/admin");
     revalidatePath("/");
-    revalidatePath(`/${encodeURIComponent(url)}`);
+    revalidatePath(`/${deleted.slug}`);
 
     return { success: true };
   } catch (err) {
@@ -345,13 +357,17 @@ export async function bulkUploadBookmarks(
     urls: string;
   },
 ): Promise<ActionState> {
+  if (!(await hasAdminSession())) return signInError;
   try {
     const urls = formData.urls;
     if (!urls) {
       return { error: "No URLs provided" };
     }
 
-    const urlList = urls.split("\n").filter((url) => url.trim());
+    if (!process.env.EXASEARCH_API_KEY || !process.env.ANTHROPIC_API_KEY) {
+      return { error: "Bulk import requires Exa and Anthropic configuration" };
+    }
+    const urlList = urls.split("\n").map((url) => url.trim()).filter(Boolean);
     let successCount = 0;
     let errorCount = 0;
 
@@ -386,24 +402,15 @@ export async function bulkUploadBookmarks(
         await db.insert(bookmarks).values(bookmarkData);
 
         successCount++;
-        revalidatePath("/admin");
-        revalidatePath("/[slug]");
-
-        // Return progress update
-        return {
-          success: true,
-          progress: {
-            current: i + 1,
-            total: urlList.length,
-            lastAdded: content.title,
-          },
-        };
       } catch (error) {
         errorCount++;
         console.error(`Error processing URL ${url}:`, error);
       }
     }
 
+    if (successCount === 0) return { error: "No bookmarks were imported" };
+    revalidatePath("/admin");
+    revalidatePath("/");
     return {
       success: true,
       message: `Successfully imported ${successCount} bookmarks. ${errorCount > 0 ? `Failed to import ${errorCount} URLs.` : ""}`,
@@ -431,48 +438,19 @@ export async function scrapeUrl(
     url: string;
   },
 ): Promise<ActionState> {
+  if (!(await hasAdminSession())) return signInError;
   try {
     const url = formData.url;
     if (!url) return { error: "URL is required" };
 
-    // Get metadata from our API
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : process.env.NODE_ENV === "development"
-        ? "http://localhost:3000"
-        : "";
-
-    const metadataResponse = await fetch(
-      `${baseUrl}/api/metadata?url=${encodeURIComponent(url)}`,
-      {
-        method: "GET",
-      },
-    );
-
-    if (!metadataResponse.ok) {
-      throw new Error("Failed to fetch metadata");
-    }
-
-    const metadata = await metadataResponse.json();
-
-    // Get search results using Exa API
-    const exaResponse = await fetch("https://api.exa.ai/search", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.EXASEARCH_API_KEY}`,
-      },
-      body: JSON.stringify({
-        query: url,
-        num_results: 5,
-      }),
+    const apiKey = process.env.EXASEARCH_API_KEY;
+    if (!apiKey) return { error: "Exa is unconfigured" };
+    const metadata = await getUrlMetadata(url);
+    const exa = new Exa(apiKey);
+    const searchResults = await exa.getContents([metadata.url], {
+      text: true,
+      livecrawl: "fallback",
     });
-
-    if (!exaResponse.ok) {
-      throw new Error("Failed to fetch search results from Exa");
-    }
-
-    const searchResults = await exaResponse.json();
 
     return {
       success: true,
@@ -496,77 +474,24 @@ export async function scrapeUrl(
 
 export async function generateContent(url: string): Promise<GeneratedContent> {
   try {
-    if (!url) {
-      throw new Error("URL is required");
+    if (!(await hasAdminSession())) throw new Error(signInError.error);
+    const exaKey = process.env.EXASEARCH_API_KEY;
+    if (!exaKey || !process.env.ANTHROPIC_API_KEY) {
+      throw new Error("Content generation requires Exa and Anthropic configuration");
     }
 
-    // Get the base URL for the API
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : process.env.NEXT_PUBLIC_SITE_URL // Add support for custom domain
-      ? process.env.NEXT_PUBLIC_SITE_URL
-      : process.env.NODE_ENV === "development"
-        ? "http://localhost:3000"
-        : ""; // Empty string will make the fetch relative to current origin
-
-    // Use relative URL if baseUrl is empty (will use current origin)
-    const metadataUrl = baseUrl
-      ? `${baseUrl}/api/metadata?url=${encodeURIComponent(url)}`
-      : `/api/metadata?url=${encodeURIComponent(url)}`;
-
-    // First, fetch metadata from our API
-    const metadataResponse = await fetch(metadataUrl, {
-      method: "GET",
-    });
-
-    if (!metadataResponse.ok) {
-      const errorData = await metadataResponse.json().catch(() => ({}));
-      throw new Error(errorData.error || "Failed to fetch metadata");
-    }
-
-    const metadata = await metadataResponse.json();
-    console.log("API metadata:", metadata);
-
-    // Get search results using Exa
-    const exa = new Exa(process.env.EXASEARCH_API_KEY as string);
-    const searchResults = await exa.getContents([url], {
+    const metadata = await getUrlMetadata(url);
+    const exa = new Exa(exaKey);
+    const searchResults = await exa.getContents([metadata.url], {
       text: true,
       livecrawl: "fallback",
     });
 
-    console.log("Exa search results:", searchResults);
-
-    // Generate overview using Claude
-    const overviewResponse = await fetch(`${baseUrl}/api/generate`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        url: url,
-        searchResults: JSON.stringify(searchResults),
-      }),
-    });
-
-    if (!overviewResponse.ok) {
-      throw new Error("Failed to generate overview");
-    }
-
-    const overviewData = await overviewResponse.json();
-    console.log("Generated overview:", overviewData);
-
-    // Generate a slug from the title
-    const slug = generateSlug(metadata.title || "");
-
     return {
-      title: metadata.title || "",
-      description: metadata.description || "",
-      url: metadata.url || url,
-      overview: overviewData.overview || "",
+      ...metadata,
+      overview: await generateOverview(metadata.url, searchResults),
       search_results: JSON.stringify(searchResults),
-      favicon: metadata.favicon || "",
-      ogImage: metadata.ogImage || "",
-      slug: slug,
+      slug: generateSlug(metadata.title),
     };
   } catch (error) {
     console.error("Error generating content:", error);

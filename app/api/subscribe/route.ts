@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 const LOOPS_API_KEY = process.env.LOOPS_API_KEY;
 
@@ -6,8 +7,11 @@ export async function POST(request: Request) {
   try {
     const { email, source, userGroup } = await request.json();
 
-    if (!email) {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 });
+    if (!z.string().email().safeParse(email).success) {
+      return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
+    }
+    if (!LOOPS_API_KEY) {
+      return NextResponse.json({ error: "Newsletter subscriptions are unavailable in this environment." }, { status: 503 });
     }
 
     const response = await fetch(
