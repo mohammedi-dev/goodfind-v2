@@ -21,6 +21,7 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 
@@ -56,17 +57,16 @@ export function EmailForm() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to subscribe");
+        const { error } = await response.json().catch(() => ({}));
+        throw new Error(error || "Failed to subscribe. Please try again.");
       }
 
-      const data = await response.json();
-      console.log("Submitted email:", values.email, "Contact ID:", data.id);
       setIsSubmitted(true);
     } catch (error) {
       console.error("Error submitting email:", error);
       form.setError("email", {
         type: "manual",
-        message: "Failed to subscribe. Please try again.",
+        message: error instanceof Error ? error.message : "Failed to subscribe. Please try again.",
       });
     } finally {
       setIsLoading(false);
@@ -77,15 +77,18 @@ export function EmailForm() {
     <div>
       {!isSubmitted ? (
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2" noValidate>
             <FormField
               control={form.control}
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormControl>
-                    <div className="flex gap-2">
+                  <FormLabel className="sr-only">Email address</FormLabel>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <FormControl>
                       <Input
+                        type="email"
+                        autoComplete="email"
                         placeholder="Your email"
                         {...field}
                         className={cn(
@@ -94,15 +97,11 @@ export function EmailForm() {
                         )}
                         disabled={isLoading}
                       />
-                      <Button
-                        type="submit"
-                        className="h-12 px-8 text-lg"
-                        disabled={isLoading}
-                      >
-                        Subscribe
-                      </Button>
-                    </div>
-                  </FormControl>
+                    </FormControl>
+                    <Button type="submit" className="h-12 px-6" disabled={isLoading}>
+                      {isLoading ? "Subscribing…" : "Subscribe"}
+                    </Button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -110,7 +109,7 @@ export function EmailForm() {
           </form>
         </Form>
       ) : (
-        <p className="flex h-12 items-center justify-center text-sm">
+        <p className="flex h-12 items-center justify-center text-sm" role="status">
           Thank you for subscribing.
         </p>
       )}

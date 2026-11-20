@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { adminCookie } from "@/lib/admin-auth";
 
-export async function GET() {
-  // Remove the authentication cookie
-  cookies().delete("boho_token");
-
-  return NextResponse.redirect(new URL("/", process.env.NEXT_PUBLIC_SITE_URL));
+export async function POST(request: Request) {
+  const response = NextResponse.redirect(new URL("/admin/login", request.url), 303);
+  response.cookies.delete(adminCookie);
+  return response;
 }

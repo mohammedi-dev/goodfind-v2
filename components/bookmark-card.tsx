@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Star, Archive, ExternalLink, Bookmark } from "lucide-react";
 import { Button } from "./ui/button";
+import { ResourceImage } from "./resource-image";
 
 interface BookmarkCardProps {
   bookmark: {
@@ -67,22 +68,18 @@ export const BookmarkCard = ({ bookmark }: BookmarkCardProps) => {
         className="relative aspect-video w-full overflow-hidden border-b focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         aria-label={`View details for ${bookmark.title}`}
       >
-        {bookmark.ogImage ? (
-          <img
-            src={bookmark.ogImage}
-            alt="Open Graph preview"
-            width={300}
-            height={200}
-            className="rounded-lg object-cover"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center bg-muted">
-            <Bookmark
-              className="h-8 w-8 text-muted-foreground"
-              aria-hidden="true"
-            />
-          </div>
-        )}
+        <ResourceImage
+          src={bookmark.ogImage}
+          alt="Open Graph preview"
+          width={300}
+          height={200}
+          className="rounded-lg object-cover"
+          fallback={
+            <div className="flex h-full items-center justify-center bg-muted">
+              <Bookmark className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
+            </div>
+          }
+        />
         <div className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
       </Link>
 
@@ -104,20 +101,14 @@ export const BookmarkCard = ({ bookmark }: BookmarkCardProps) => {
         <div className="space-y-3 pt-4">
           {/* Category and Site Info */}
           <div className="flex items-center gap-2">
-            {bookmark.favicon ? (
-              <img
-                src={bookmark.favicon}
-                alt="Site favicon"
-                width={16}
-                height={16}
-                className="h-4 w-4"
-              />
-            ) : (
-              <Bookmark
-                className="h-4 w-4 text-muted-foreground"
-                aria-hidden="true"
-              />
-            )}
+            <ResourceImage
+              src={bookmark.favicon}
+              alt="Site favicon"
+              width={16}
+              height={16}
+              className="h-4 w-4"
+              fallback={<Bookmark className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
+            />
             {bookmark.category && (
               <Badge
                 style={{

@@ -1,59 +1,31 @@
-import { anthropic } from "@ai-sdk/anthropic";
-import { generateText } from "ai";
 import { NextResponse } from "next/server";
+import { adminApiDenied } from "@/lib/admin-session";
+import { generateOverview } from "@/lib/enrichment";
+import { isBookmarkUrl } from "@/lib/utils";
 
 export async function POST(request: Request) {
+  const denied = await adminApiDenied();
+  if (denied) return denied;
+
+  const body = await request.json().catch(() => null);
+  if (!isBookmarkUrl(body?.url) || !body.searchResults) {
+    return NextResponse.json({ error: "A valid URL and search results are required" }, { status: 400 });
+  }
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return NextResponse.json({ error: "Anthropic is unconfigured" }, { status: 503 });
+  }
+
   try {
-    const { url, searchResults } = await request.json();
-
-    if (!url || !searchResults) {
-      return NextResponse.json(
-        { error: "URL and search results are required" },
-        { status: 400 },
-      );
+    let searchResults = body.searchResults;
+    if (typeof searchResults === "string") {
+      try {
+        searchResults = JSON.parse(searchResults);
+      } catch {
+        // Plain text is also valid reference material.
+      }
     }
-
-    // Parse and format search results for better context
-    let parsedResults;
-    try {
-      parsedResults = JSON.parse(searchResults);
-    } catch (error) {
-      console.warn("Failed to parse search results:", error);
-      parsedResults = searchResults; // Use as is if already parsed
-    }
-
-    const prompt = `You are a helpful assistant that writes clear, concise summaries of web content.
-    Based on the search results and content from ${url}, write a brief but comprehensive overview.
-
-    Focus on:
-    - The main purpose or value proposition
-    - Key features or main points
-    - Target audience or use cases
-    - What makes it unique or noteworthy
-
-    Format the response in markdown and keep it under 200 words. Make it engaging and informative.
-
-    Context from the webpage:
-    ${JSON.stringify(parsedResults, null, 2)}`;
-
-    const { text } = await generateText({
-      model: anthropic("claude-3-haiku-20240307"),
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      temperature: 0.7,
-    });
-
-    return NextResponse.json({ overview: text });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-    console.error("Error generating overview:", errorMessage);
-    return NextResponse.json(
-      { error: `Failed to generate overview: ${errorMessage}` },
-      { status: 500 },
-    );
+    return NextResponse.json({ overview: await generateOverview(body.url, searchResults) });
+  } catch {
+    return NextResponse.json({ error: "Could not generate an overview" }, { status: 502 });
   }
 }

@@ -24,11 +24,24 @@ export default function AdminPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          url: formData.url,
+          slug: formData.slug,
+          title: formData.name,
+          description: formData.description,
+          category: formData.category,
+          screenshot: formData.screenshot_url,
+          overview: [
+            formData.overview,
+            formData.use_case && `## Use Case\n\n${formData.use_case}`,
+            formData.how_to_use && `## How to Use\n\n${formData.how_to_use}`,
+          ].filter(Boolean).join("\n\n"),
+        }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to add bookmark");
+        const { error } = await response.json();
+        throw new Error(error || "Failed to add bookmark");
       }
 
       // Clear form after successful submission
@@ -47,7 +60,7 @@ export default function AdminPage() {
       alert("Bookmark added successfully!");
     } catch (error) {
       console.error("Error adding bookmark:", error);
-      alert("Failed to add bookmark. Please try again.");
+      alert(error instanceof Error ? error.message : "Failed to add bookmark.");
     }
   };
 

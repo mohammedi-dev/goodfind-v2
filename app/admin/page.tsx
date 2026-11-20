@@ -2,22 +2,29 @@ import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { getAllCategories, getAllBookmarks } from "@/lib/data";
+import { hasAdminSession } from "@/lib/admin-session";
+import { redirect } from "next/navigation";
 import { CategoryManager } from "@/components/admin/category-manager";
 import { BookmarkManager } from "@/components/admin/bookmark-manager";
 import { Section, Container } from "@/components/craft";
 import { Bookmark, FolderKanban, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Toaster } from "@/components/ui/sonner";
 
 export default async function AdminPage() {
-  const categories = await getAllCategories();
-  const bookmarks = await getAllBookmarks();
+  if (!(await hasAdminSession())) redirect("/admin/login");
+  const [categories, bookmarks] = await Promise.all([
+    getAllCategories(),
+    getAllBookmarks(),
+  ]);
 
   return (
     <Section>
+      <Toaster />
       <Container>
         <div className="space-y-8">
           {/* Header */}
-          <div className="flex items-center justify-between border-b pb-8">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-8">
             <div className="space-y-1">
               <h1 className="text-4xl font-bold tracking-tight">
                 Admin Dashboard
@@ -54,8 +61,8 @@ export default async function AdminPage() {
 
           {/* Tabs */}
           <Tabs defaultValue="bookmarks" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <TabsList className="grid w-[400px] grid-cols-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <TabsList className="grid w-full max-w-[400px] grid-cols-2">
                 <TabsTrigger value="bookmarks" className="gap-2">
                   <Bookmark className="h-4 w-4" />
                   Bookmarks
@@ -72,7 +79,7 @@ export default async function AdminPage() {
                     Admin Controls
                   </span>
                 </Card>
-                <form action="/api/admin/logout">
+                <form action="/api/admin/logout" method="post">
                   <Button
                     type="submit"
                     variant="outline"

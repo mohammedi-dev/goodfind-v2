@@ -1,27 +1,26 @@
-# 9d8/directory
+# Goodfind
 
-![CleanShot 2024-12-04 at 16 52 10@2x](https://github.com/user-attachments/assets/6fcd8458-eb07-411d-b813-212b5b26b67e)
-
-
-A modern, AI-powered Next.js directory template for creating beautiful resource collections and bookmarks. Perfect for creating your own curated list of resources, bookmarks, or link directories. View the live demo at [directory.9d8.dev](https://directory.9d8.dev).
+A Next.js resource library for discovering useful tools, learning resources, and software. Goodfind started from the MIT-licensed [9d8/directory template](https://github.com/9d8dev/directory).
 
 ## Overview
 
 Built with modern web technologies and designed with a focus on user experience, this template provides everything you need to create a professional resource directory:
 
 - **Resource Management**: Organize and share bookmarks with rich metadata
-- **AI Integration**: Automatic content generation and smart categorization
+- **AI Integration**: Website metadata and generated resource overviews
 - **Newsletter**: Built-in email subscription with Loops integration
 - **Beautiful UI**: Responsive design with dark/light mode support
 - **Admin Dashboard**: Powerful tools for content management
 
+The homepage uses the shared tokens in `app/discovery.css`, Manrope, and the existing Radix and Lucide components. The topic hierarchy and collection rules live in `lib/discovery.ts`. They match the library’s existing category slugs and comma-separated bookmark tags, so adding a browse topic requires no database migration. Admin-created categories continue to work independently.
+
 ## Tech Stack
 
-- **Framework**: Next.js 14+ with App Router and Server Actions
-- **Database**: Turso (SQLite) with Drizzle ORM
+- **Framework**: Next.js 15 with App Router and Server Actions
+- **Database**: Local SQLite or hosted Turso with Drizzle ORM
 - **Styling**: Tailwind CSS + shadcn/ui components
 - **AI**: Anthropic Claude for content generation
-- **Search**: Exa for semantic search capabilities
+- **Search**: Case-insensitive keyword matching for the public directory. Exa supplies content for admin enrichment.
 - **Analytics**: Built-in Vercel Analytics
 
 ## Features
@@ -44,70 +43,43 @@ Built with modern web technologies and designed with a focus on user experience,
 
 ## Quick Start
 
-1. Clone the repository:
+Use Node.js 22 or newer and pnpm 12 (the exact pnpm release is in `package.json`).
 
 ```bash
-git clone https://github.com/9d8dev/directory.git
-cd directory
+git clone https://github.com/mohammedi-dev/goodfind-v2.git
+cd goodfind-v2
+pnpm install --frozen-lockfile
 ```
 
-2. Install dependencies:
+Copy `.env.example` to `.env` with `cp .env.example .env` or `Copy-Item .env.example .env` in PowerShell. Set `BOHO_PASSWORD` to a local password and `BOHO_SECRET` to a random string of at least 32 characters. This command generates a suitable secret.
 
 ```bash
-pnpm install
+node -p "require('node:crypto').randomBytes(32).toString('hex')"
 ```
 
-3. Set up your environment variables:
+With the example `file:` database URL, initialize and optionally seed your local database.
 
 ```bash
-cp .env.example .env
-```
-
-### Database Configuration
-
-- `TURSO_DATABASE_URL`: Your Turso SQLite database URL
-- `TURSO_AUTH_TOKEN`: Authentication token for Turso database access
-
-### Authentication
-
-- `ADMIN_PASSWORD`: Password for accessing the `/admin` routes
-  - Must be at least 8 characters
-  - Used for admin dashboard authentication
-
-### AI Features
-
-- `ANTHROPIC_API_KEY`: Anthropic API key for AI features
-  - Required for content generation
-  - Get one at [Anthropic Console](https://console.anthropic.com)
-- `EXASEARCH_API_KEY`: Exa API key for enhanced search capabilities
-  - Powers the semantic search feature
-  - Get one at [Exa](https://exa.ai)
-
-### Email Features
-
-- `LOOPS_API_KEY`: API key for email subscription functionality
-  - Required for newsletter features
-  - Get one at [Loops](https://loops.so)
-
-### Site Configuration
-
-- `NEXT_PUBLIC_SITE_URL`: Your site's public URL
-  - Format: `https://yourdomain.com`
-  - Used for generating OpenGraph images and links
-
-4. Initialize the database:
-
-```bash
-pnpm db:generate   # Generate migrations
-pnpm db:migrate    # Run migrations
-pnpm db:seed      # Seed initial data (optional)
-```
-
-5. Start the development server:
-
-```bash
+pnpm db:push
+pnpm db:seed
 pnpm dev
 ```
+
+Open the directory at [http://localhost:3000](http://localhost:3000) and sign in at [/admin](http://localhost:3000/admin). The seed adds four categories and six example resources and can be rerun. `pnpm lint`, `pnpm exec tsc --noEmit` and `pnpm build` check the project.
+
+The local setup initializes a disposable database directly from `db/schema.ts`. The legacy migrations and the schema differ. Reconcile those migrations against a backup before changing an existing Goodfind or Turso database.
+
+### External services
+
+| Configuration | Used for |
+| --- | --- |
+| `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` | Hosted Turso database. Local SQLite needs only the `file:` URL. |
+| `ANTHROPIC_API_KEY`, `EXASEARCH_API_KEY` | Admin AI overviews and bulk URL import. Public keyword search works locally. |
+| `LOOPS_API_KEY` | Newsletter signups. |
+| `NEXT_PUBLIC_SITE_URL` | Canonical site origin for metadata and sitemap. |
+| Vercel project | Optional hosting and Vercel Analytics. |
+
+Before deploying publicly, add outbound network restrictions for metadata fetches, add sign-in throttling and review remaining advisories with `pnpm audit --prod`.
 
 ## Admin Dashboard
 
@@ -124,22 +96,20 @@ The admin dashboard at `/admin` provides a powerful interface for managing your 
 
 2. **Bulk Import**
 
-   - Paste multiple URLs for batch processing
-   - Automatic metadata extraction for all entries
-   - Review and edit before final import
+   - Upload a CSV with one URL per line
+   - Generate metadata and overviews during import
+   - Review and edit imported entries in the dashboard
 
 3. **Edit Bookmarks**
    - Update metadata and categories
    - Regenerate AI content
    - Manage bookmark status
-   - View analytics and engagement
 
 ### Managing Categories
 
 - Create custom categories with colors and icons
 - Organize bookmarks into categories
 - Edit category metadata
-- View category statistics
 
 ### API Integration
 
@@ -148,7 +118,7 @@ The admin interface uses Next.js Server Actions for:
 - Real-time updates
 - Optimistic UI
 - Error handling
-- Progress tracking
+- Bulk import results
 
 ## Customization
 
@@ -165,16 +135,7 @@ export const directory = {
 
 ## Deployment
 
-Deploy to Vercel with one click:
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/9d8dev/directory)
-
-The project is optimized for Vercel deployment with:
-
-- Edge runtime support
-- Automatic SQLite database setup
-- Built-in analytics
-- Zero-config deployment
+Vercel can host the Next.js app and optionally provide analytics. For a hosted deployment, configure persistent storage and production credentials after resolving the migration and security items in the local setup section.
 
 ## Contributing
 
