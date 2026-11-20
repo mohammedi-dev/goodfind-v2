@@ -1,35 +1,65 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { load } from "cheerio";
-import { isBookmarkUrl } from "@/lib/utils";
+import { fetchPublicMetadata, publicHttpUrl } from "@/lib/public-fetch";
+
+function repositoryUrl(url: URL) {
+  if (url.hostname !== "github.com") return "";
+  const [owner, name] = url.pathname.split("/").filter(Boolean);
+  if (!owner || !name || !/^[\w.-]+$/.test(owner) || !/^[\w.-]+$/.test(name)) return "";
+  return `https://github.com/${owner}/${name.replace(/\.git$/, "")}`;
+}
+
+const cleanMetadata = (value: unknown, limit: number) =>
+  typeof value === "string" ? value.trim().replace(/\s+/g, " ").slice(0, limit) : "";
+
+function metadataLink(value: unknown, base: URL) {
+  if (typeof value !== "string" || !value.trim()) return "";
+  try {
+    return publicHttpUrl(new URL(value, base).href).href;
+  } catch {
+    return "";
+  }
+}
 
 export async function getUrlMetadata(input: string) {
-  if (!isBookmarkUrl(input)) throw new Error("A valid HTTP(S) URL is required");
-
-  const response = await fetch(input, {
-    cache: "no-store",
-    signal: AbortSignal.timeout(10000),
-    headers: { "User-Agent": "DirectoryBot/1.0" },
-  });
-  if (!response.ok) throw new Error(`Website returned HTTP ${response.status}`);
-
-  const $ = load(await response.text());
-  const pageUrl = new URL(response.url);
-  const absoluteUrl = (value?: string) => {
-    if (!value) return "";
+  const original = publicHttpUrl(input);
+  const github = repositoryUrl(original);
+  const signal = AbortSignal.timeout(9000);
+  if (github) {
     try {
-      const resolved = new URL(value, pageUrl).href;
-      return isBookmarkUrl(resolved) ? resolved : "";
+      const { text } = await fetchPublicMetadata(
+        `https://api.github.com/repos${new URL(github).pathname}`, signal, "json",
+      );
+      const repo = JSON.parse(text);
+      if (typeof repo.name === "string" && repo.name) {
+        return {
+          url: original.href,
+          title: cleanMetadata(repo.name, 120),
+          description: cleanMetadata(repo.description, 600),
+          favicon: "https://github.githubassets.com/favicons/favicon.svg",
+          ogImage: "",
+          github,
+          website: metadataLink(repo.homepage, original),
+        };
+      }
     } catch {
-      return "";
+      signal.throwIfAborted();
+      // The normal repository page is still useful if the anonymous API limit is reached.
     }
-  };
+  }
+
+  const { text, url: pageUrl } = await fetchPublicMetadata(original.href, signal, "html");
+  const $ = load(text);
+  const absoluteUrl = (value?: string) => metadataLink(value, pageUrl);
 
   return {
-    url: new URL(input).href,
-    title: $('meta[property="og:title"]').attr("content") || $("title").text().trim() || pageUrl.hostname,
-    description: $('meta[property="og:description"]').attr("content") || $('meta[name="description"]').attr("content") || "",
-    favicon: absoluteUrl($('link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]').attr("href") || "/favicon.ico"),
+    url: original.href,
+    title: cleanMetadata($('meta[property="og:title"]').attr("content") || $("title").text(), 120) || pageUrl.hostname,
+    description: cleanMetadata($('meta[property="og:description"]').attr("content") || $('meta[name="description"]').attr("content"), 600),
+    favicon: absoluteUrl($('link[rel~="icon"], link[rel="apple-touch-icon"]').attr("href") || "/favicon.ico"),
     ogImage: absoluteUrl($('meta[property="og:image"], meta[name="twitter:image"]').attr("content")),
+    github: github || repositoryUrl(pageUrl),
+    website: pageUrl.href === original.href ? "" : pageUrl.href,
   };
 }
 

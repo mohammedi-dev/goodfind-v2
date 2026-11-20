@@ -1,5 +1,7 @@
 "use client";
 
+import { ResourceImage } from "@/components/resource-image";
+
 interface ResultDisplayProps {
   metadata: {
     title: string;
@@ -15,7 +17,7 @@ export function ResultDisplay({ metadata, error }: ResultDisplayProps) {
   if (error) {
     return (
       <div className="rounded-lg border border-destructive p-4">
-        <p className="text-sm text-destructive">{error}</p>
+        <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
       </div>
     );
   }
@@ -28,12 +30,14 @@ export function ResultDisplay({ metadata, error }: ResultDisplayProps) {
     <div className="space-y-4 rounded-lg border p-4">
       <div className="flex items-center gap-2">
         {metadata.favicon && (
-          <img
+          <ResourceImage
             src={metadata.favicon}
             alt="Site favicon"
             width={16}
             height={16}
             className="h-4 w-4"
+            referrerPolicy="no-referrer"
+            fallback={null}
           />
         )}
         <h3 className="font-medium">{metadata.title}</h3>
@@ -44,12 +48,14 @@ export function ResultDisplay({ metadata, error }: ResultDisplayProps) {
       )}
 
       {metadata.ogImage && (
-        <img
+        <ResourceImage
           src={metadata.ogImage}
           alt="Open Graph preview"
           width={300}
           height={200}
-          className="rounded-lg"
+          className="h-auto max-w-full rounded-lg"
+          referrerPolicy="no-referrer"
+          fallback={null}
         />
       )}
 

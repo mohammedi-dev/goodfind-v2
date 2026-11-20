@@ -8,7 +8,18 @@ export const showcaseCategories = [
 ] as const;
 
 export type ShowcaseCategory = (typeof showcaseCategories)[number]["id"];
-export type Artwork = "orbit" | "stack" | "grid" | "rays" | "signal" | "record" | "swatches" | "terminal";
+export const artworkPatterns = ["orbit", "stack", "grid", "rays", "signal", "record", "swatches", "terminal"] as const;
+export type Artwork = (typeof artworkPatterns)[number];
+
+export function isArtworkPattern(value: string | null | undefined): value is Artwork {
+  return artworkPatterns.some((pattern) => pattern === value);
+}
+
+export function isHexColor(value: string | null | undefined): value is string {
+  return typeof value === "string" && /^#[a-f\d]{6}$/i.test(value);
+}
+
+export const showcaseAssetUrl = (id: string) => `/api/showcase-assets/${id}`;
 
 export type ShowcaseResource = {
   id: number;
@@ -28,6 +39,7 @@ export type ShowcaseResource = {
   category: ShowcaseCategory;
   accent: string;
   artwork: Artwork;
+  background?: string;
 };
 
 const categoryAliases: Record<ShowcaseCategory, string[]> = {
@@ -46,6 +58,19 @@ export function showcaseCategory(category?: string, tags: string[] = []): Showca
     if (match) return match.id;
   }
   return "software";
+}
+
+type ShowcaseGrouping = { tags: string | null; category: { slug: string } | null };
+type ShowcaseOrder = { id: number; isFavorite: boolean; appearance: { position: number | null } | null };
+
+export function resourceCategory(resource: ShowcaseGrouping): ShowcaseCategory {
+  return showcaseCategory(resource.category?.slug, readShowcaseTags(resource.tags).tags);
+}
+
+export function compareShowcaseOrder(a: ShowcaseOrder, b: ShowcaseOrder) {
+  const previous = a.appearance?.position ?? Infinity;
+  const next = b.appearance?.position ?? Infinity;
+  return (previous === next ? 0 : previous - next) || Number(b.isFavorite) - Number(a.isFavorite) || a.id - b.id;
 }
 
 export function isShowcaseCategory(value: string | undefined): value is ShowcaseCategory {
@@ -79,6 +104,10 @@ export function showcaseImageUrl(value?: string | null): string | null {
     }
   }
   return isBookmarkUrl(source) ? source : null;
+}
+
+export function showcaseLogoUrl(value?: string | null): string | null {
+  return value && /^\/showcase-icons\/[a-z\d-]+\.webp$/.test(value) ? value : showcaseImageUrl(value);
 }
 
 export function readShowcaseTags(value?: string | null) {

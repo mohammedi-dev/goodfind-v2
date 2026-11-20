@@ -1,747 +1,258 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-  SheetClose,
-} from "@/components/ui/sheet";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  createBookmark,
-  updateBookmark,
-  deleteBookmark,
-  generateContent,
-  bulkUploadBookmarks,
-} from "@/lib/actions";
-import { Badge } from "@/components/ui/badge";
+import { useRef, useState } from "react";
+import type { FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowDown, ArrowUp, ExternalLink, Link2, Plus, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
-import { Plus, Upload, Loader2, Trash2 } from "lucide-react";
-import { githubResourceUrl, readShowcaseTags, showcaseImageUrl, writeShowcaseTags } from "@/lib/showcase";
-import { getResourceStyle } from "@/lib/showcase-catalog";
+import { ShowcaseLogo } from "@/components/goodfind/showcase-card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { bulkUploadBookmarks, deleteBookmark } from "@/lib/actions";
+import { moveShowcaseResource } from "@/lib/resource-actions";
+import { compareShowcaseOrder, isShowcaseCategory, resourceCategory, showcaseCategories } from "@/lib/showcase";
+import { toShowcaseResource } from "@/lib/showcase-catalog";
+import { ResourceEditor } from "./resource-editor";
+import type { AdminResource } from "./resource-editor";
 
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  color: string | null;
-  icon: string | null;
-  createdAt: Date;
-  updatedAt: Date | null;
-}
+const controlClass = "h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-interface Bookmark {
-  id: number;
-  title: string;
-  slug: string;
-  url: string;
-  description: string | null;
-  overview: string | null;
-  tags: string | null;
-  screenshot: string | null;
-  favicon: string | null;
-  ogImage: string | null;
-  categoryId: string | null;
-  isFavorite: boolean;
-  isArchived: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  notes: string | null;
-}
-
-interface BookmarkWithCategory extends Bookmark {
-  category: Category | null;
-}
-
-interface BookmarkManagerProps {
-  categories: Category[];
-  bookmarks: BookmarkWithCategory[];
-}
-
-function generateSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-export function BookmarkManager({
-  bookmarks,
-  categories,
-}: BookmarkManagerProps) {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [isBulkSheetOpen, setIsBulkSheetOpen] = useState(false);
-
-  const [isUploading, setIsUploading] = useState(false);
-
-  const [bookmarkToDelete, setBookmarkToDelete] =
-    useState<BookmarkWithCategory | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const [selectedBookmark, setSelectedBookmark] =
-    useState<BookmarkWithCategory | null>(null);
-  const [isNewBookmark, setIsNewBookmark] = useState(true);
-  const metadata = readShowcaseTags(selectedBookmark?.tags);
-  const starterMetadata = selectedBookmark?.tags === null ? getResourceStyle(selectedBookmark.slug) : undefined;
-
-  // Form state management
-  const [formData, setFormData] = useState({
-    title: "",
-    slug: "",
-    url: "",
-    description: "",
-    overview: "",
-    searchResults: undefined as string | undefined,
-    favicon: "",
-    ogImage: "",
-    categoryId: "none",
-    isFavorite: false,
-    isArchived: false,
-  });
-
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsSaving(true);
-
+function BulkImport({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const [busy, setBusy] = useState(false);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const file = new FormData(event.currentTarget).get("urls");
+    if (!(file instanceof File) || !file.size || file.size > 100_000) {
+      toast.error("Choose a text or CSV file under 100 KB.");
+      return;
+    }
+    setBusy(true);
     try {
-      const fields = new FormData(e.currentTarget);
-      const github = String(fields.get("github") || "").trim();
-      if (github && !githubResourceUrl(github)) {
-        toast.error("Enter a full GitHub repository URL.");
-        return;
+      const urls = (await file.text()).split(/\r?\n/).map((line) => line.trim()).filter((line) => line && !/^url$/i.test(line));
+      const result = await bulkUploadBookmarks(null, { urls: urls.join("\n") });
+      if (result.error) toast.error(result.error);
+      else {
+        toast.success(result.message ?? "Drafts imported.");
+        onOpenChange(false);
       }
-      const artworkUrl = String(fields.get("artwork") || "").trim();
-      if (artworkUrl && !showcaseImageUrl(artworkUrl)) {
-        toast.error("Enter an artwork URL or a local path under /resources/.");
-        return;
-      }
-      const formDataObject = {
-        title: formData.title,
-        description: formData.description,
-        url: formData.url,
-        slug: formData.slug,
-        overview: formData.overview,
-        favicon: formData.favicon,
-        ogImage: formData.ogImage,
-        screenshot: String(fields.get("screenshot") || "").trim(),
-        tags: writeShowcaseTags(String(fields.get("tags") || ""), String(fields.get("platforms") || ""), github, {
-          artworkUrl,
-          recommendation: String(fields.get("recommendation") || ""),
-        }),
-        search_results: formData.searchResults,
-        categoryId: formData.categoryId,
-        isFavorite: String(formData.isFavorite),
-        isArchived: String(formData.isArchived),
-      };
-
-      const result = isNewBookmark
-        ? await createBookmark(null, formDataObject)
-        : await updateBookmark(null, { ...formDataObject, id: String(fields.get("id") || "") });
-
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success(
-          isNewBookmark ? "Bookmark created!" : "Bookmark updated!",
-        );
-        setIsSheetOpen(false);
-        resetForm();
-      }
-    } catch (err) {
-      console.error("Error saving bookmark:", err);
-      toast.error("Failed to save bookmark");
+    } catch {
+      toast.error("Could not import the file.");
     } finally {
-      setIsSaving(false);
+      setBusy(false);
     }
-  };
+  }
+  return (
+    <Sheet open={open} onOpenChange={(next) => { if (!busy) onOpenChange(next); }}>
+      <SheetContent className="w-full sm:max-w-md">
+        <SheetHeader>
+          <SheetTitle>Bulk import</SheetTitle>
+          <SheetDescription>Import one URL per line using the configured enrichment service. Entries are saved as drafts.</SheetDescription>
+        </SheetHeader>
+        <form onSubmit={submit} className="mt-6 space-y-4">
+          <div className="grid gap-2">
+            <Label htmlFor="bulk-urls">URL file</Label>
+            <Input id="bulk-urls" name="urls" type="file" accept=".csv,.txt" required />
+          </div>
+          <div className="flex justify-end gap-2">
+            <SheetClose asChild><Button type="button" variant="ghost" disabled={busy}>Cancel</Button></SheetClose>
+            <Button disabled={busy}>{busy ? "Importing" : "Import drafts"}</Button>
+          </div>
+        </form>
+      </SheetContent>
+    </Sheet>
+  );
+}
 
-  // Reset form when sheet opens/closes
-  useEffect(() => {
-    if (isSheetOpen) {
-      if (selectedBookmark) {
-        setFormData({
-          title: selectedBookmark.title,
-          slug: selectedBookmark.slug,
-          url: selectedBookmark.url,
-          description: selectedBookmark.description || "",
-          overview: selectedBookmark.overview || "",
-          searchResults: undefined,
-          favicon: selectedBookmark.favicon || "",
-          ogImage: selectedBookmark.ogImage || "",
-          categoryId: selectedBookmark.categoryId?.toString() || "none",
-          isFavorite: selectedBookmark.isFavorite,
-          isArchived: selectedBookmark.isArchived,
-        });
-      } else {
-        resetForm();
-      }
-    }
-  }, [isSheetOpen, selectedBookmark]);
+export function BookmarkManager({ bookmarks, enrichmentAvailable }: { bookmarks: AdminResource[]; enrichmentAvailable: boolean }) {
+  const [category, setCategory] = useState("all");
+  const [status, setStatus] = useState("all");
+  const [query, setQuery] = useState("");
+  const [editor, setEditor] = useState<{ resource: AdminResource | null; mode: "manual" | "url" } | null>(null);
+  const [editorSaving, setEditorSaving] = useState(false);
+  const [toDelete, setToDelete] = useState<AdminResource | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [moving, setMoving] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const editorTrigger = useRef<HTMLElement | null>(null);
+  const deletionTrigger = useRef<HTMLElement | null>(null);
+  const collectionHeading = useRef<HTMLHeadingElement>(null);
+  const router = useRouter();
 
-  const resetForm = () => {
-    setFormData({
-      title: "",
-      slug: "",
-      url: "",
-      description: "",
-      overview: "",
-      searchResults: undefined,
-      favicon: "",
-      ogImage: "",
-      categoryId: "none",
-      isFavorite: false,
-      isArchived: false,
-    });
-  };
+  const term = query.trim().toLowerCase();
+  const visible = bookmarks.filter((item) => (
+    (category === "all" || resourceCategory(item) === category) &&
+    (status === "all" || item.isArchived === (status === "draft")) &&
+    (!term || [item.title, item.description, item.url].some((value) => value?.toLowerCase().includes(term)))
+  )).sort(compareShowcaseOrder);
+  const canReorder = isShowcaseCategory(category) && status === "all" && !term;
 
-  const handleEdit = (bookmark: BookmarkWithCategory) => {
-    setSelectedBookmark(bookmark);
-    setIsNewBookmark(false);
-    setIsSheetOpen(true);
-  };
+  function openEditor(trigger: HTMLElement, resource: AdminResource | null, mode: "manual" | "url" = "manual") {
+    toast.dismiss();
+    editorTrigger.current = trigger;
+    setEditor({ resource, mode });
+  }
 
-  const handleNew = () => {
-    setSelectedBookmark(null);
-    setIsNewBookmark(true);
-    setIsSheetOpen(true);
-  };
-
-  const handleDelete = async (bookmark: BookmarkWithCategory) => {
-    setIsDeleting(true);
-    setBookmarkToDelete(bookmark);
-
+  async function move(item: AdminResource, direction: -1 | 1, neighbor?: AdminResource) {
+    if (!neighbor || moving) return;
+    setMoving(true);
     try {
-      const deleteData = {
-        id: bookmark.id.toString(),
-        url: bookmark.url,
-      };
-      const result = await deleteBookmark(null, deleteData);
+      const result = await moveShowcaseResource(item.id, neighbor.id, category, direction);
+      if (result.error) toast.error(result.error);
+      else toast.success("Resource moved.");
+      router.refresh();
+    } catch {
+      toast.error("Could not move the resource.");
+    } finally {
+      setMoving(false);
+    }
+  }
 
-      if (result.success) {
-        toast.success("Bookmark deleted!");
-        setBookmarkToDelete(null);
+  async function confirmDelete() {
+    if (!toDelete || isDeleting) return;
+    setIsDeleting(true);
+    setDeleteError("");
+    try {
+      const result = await deleteBookmark(null, { id: String(toDelete.id), url: toDelete.url });
+      if (result.error) {
+        setDeleteError(result.error);
       } else {
-        toast.error(result.error || "Failed to delete bookmark");
+        toast.success("Resource deleted.");
+        deletionTrigger.current = null;
+        setToDelete(null);
+        router.refresh();
       }
-    } catch (err) {
-      console.error("Error deleting bookmark:", err);
-      toast.error("Failed to delete bookmark");
+    } catch {
+      setDeleteError("Could not delete the resource.");
     } finally {
       setIsDeleting(false);
     }
-  };
-
-  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const title = e.target.value;
-    const slug = generateSlug(title);
-    setFormData((prev) => ({ ...prev, title, slug }));
-  };
-
-  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let url = e.target.value.trim();
-    if (url && !url.match(/^https?:\/\//)) {
-      url = `https://${url}`;
-    }
-    setFormData((prev) => ({ ...prev, url }));
-  };
-
-  const handleGenerateContent = async (form: HTMLFormElement) => {
-    if (isGenerating) return;
-
-    try {
-      setIsGenerating(true);
-      const formData = new FormData(form);
-      const url = formData.get("url") as string;
-
-      if (!url) {
-        toast.error("Please enter a URL first");
-        return;
-      }
-
-      const result = await generateContent(url);
-
-      if ("error" in result) {
-        toast.error(result.error as string);
-      } else {
-        setFormData((prev) => ({
-          ...prev,
-          title: result.title || prev.title,
-          description: result.description || prev.description,
-          overview: result.overview || prev.overview,
-          searchResults: result.search_results || prev.searchResults,
-          favicon: result.favicon || prev.favicon,
-          ogImage: result.ogImage || prev.ogImage,
-          slug: result.slug || prev.slug,
-        }));
-        toast.success("Content generated successfully!");
-      }
-    } catch (err) {
-      console.error("Error generating content:", err);
-      toast.error("Failed to generate content");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleBulkUpload = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const file = formData.get("file") as File;
-
-    if (!file) {
-      toast.error("Please select a file to upload");
-      return;
-    }
-
-    setIsUploading(true);
-    try {
-      const text = await file.text();
-      const urls = text
-        .split("\n")
-        .map((url) => url.trim())
-        .filter((url) => url && !url.toLowerCase().startsWith("url")); // Skip header if present
-
-      const result = await bulkUploadBookmarks(null, { urls: urls.join("\n") });
-
-      if (result.success) {
-        toast.success(result.message || "Bookmarks uploaded successfully");
-        setIsBulkSheetOpen(false);
-      } else {
-        toast.error(result.error || "Failed to upload bookmarks");
-      }
-
-    } catch (error) {
-      toast.error("Failed to process the CSV file");
-      console.error(error);
-    } finally {
-      setIsUploading(false);
-    }
-  };
+  }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Manage Bookmarks</h2>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            onClick={() => setIsBulkSheetOpen(true)}
-            size="sm"
-            variant="outline"
-          >
-            <Upload className="mr-2 h-4 w-4" />
-            Bulk Upload
-          </Button>
-          <Button onClick={handleNew} size="sm">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Bookmark
-          </Button>
+    <section className="space-y-4" aria-labelledby="collection-heading">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 id="collection-heading" ref={collectionHeading} tabIndex={-1} className="text-xl font-semibold tracking-tight">Resources</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Keep drafts private and set the order of each showcase category.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {enrichmentAvailable && <Button size="sm" variant="ghost" onClick={() => setBulkOpen(true)}><Upload className="mr-2 h-4 w-4" aria-hidden="true" /> Bulk import</Button>}
+          <Button size="sm" variant="outline" onClick={(event) => openEditor(event.currentTarget, null)}><Plus className="mr-2 h-4 w-4" aria-hidden="true" /> Add resource</Button>
+          <Button size="sm" onClick={(event) => openEditor(event.currentTarget, null, "url")}><Link2 className="mr-2 h-4 w-4" aria-hidden="true" /> Import URL</Button>
         </div>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {bookmarks.map((bookmark) => (
-              <TableRow key={bookmark.id}>
-                <TableCell className="font-medium">{bookmark.title}</TableCell>
-                <TableCell>
-                  {bookmark.category && (
-                    <Badge
-                      style={{
-                        backgroundColor: bookmark.category.color || undefined,
-                        color: "white",
-                      }}
-                    >
-                      {bookmark.category.name}
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    {bookmark.isFavorite && (
-                      <Badge variant="secondary">Favorite</Badge>
-                    )}
-                    {bookmark.isArchived && (
-                      <Badge variant="secondary">Archived</Badge>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(bookmark)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(bookmark)}
-                      disabled={
-                        isDeleting && bookmarkToDelete?.id === bookmark.id
-                      }
-                    >
-                      {isDeleting && bookmarkToDelete?.id === bookmark.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      )}
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <div className="grid grid-cols-2 gap-3 rounded-xl border bg-card p-3 sm:grid-cols-[minmax(0,1fr)_10rem_9rem] sm:p-4">
+        <div className="col-span-2 grid gap-2 sm:col-span-1">
+          <Label htmlFor="filter-resource-search">Find a resource</Label>
+          <Input id="filter-resource-search" type="search" value={query} placeholder="Name or URL" onChange={(event) => setQuery(event.target.value)} />
+        </div>
+        <div className="grid min-w-0 gap-2">
+          <Label htmlFor="filter-resource-category">Category</Label>
+          <select id="filter-resource-category" className={controlClass} value={category} onChange={(event) => setCategory(event.target.value)}>
+            <option value="all">All categories</option>
+            {showcaseCategories.map((item) => <option value={item.id} key={item.id}>{item.label}</option>)}
+          </select>
+        </div>
+        <div className="grid min-w-0 gap-2">
+          <Label htmlFor="filter-resource-status">Visibility</Label>
+          <select id="filter-resource-status" className={controlClass} value={status} onChange={(event) => setStatus(event.target.value)}>
+            <option value="all">All statuses</option>
+            <option value="published">Published</option>
+            <option value="draft">Draft / hidden</option>
+          </select>
+        </div>
       </div>
 
-      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
-          <SheetHeader>
-            <SheetTitle>
-              {isNewBookmark ? "Add Bookmark" : "Edit Bookmark"}
-            </SheetTitle>
-            <SheetDescription>
-              {isNewBookmark
-                ? "Add a new bookmark to your collection"
-                : "Update the details of your bookmark"}
-            </SheetDescription>
-          </SheetHeader>
-
-          <form
-            id="bookmarkForm"
-            onSubmit={handleSubmit}
-            className="mt-6 space-y-6"
-          >
-            <input type="hidden" name="id" value={selectedBookmark?.id || ""} />
-            <input type="hidden" name="slug" value={formData.slug} />
-
-            <div className="space-y-4">
-              <div className="grid gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="url">URL</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="url"
-                      name="url"
-                      type="url"
-                      required
-                      value={formData.url}
-                      onChange={handleUrlChange}
-                      placeholder="https://example.com"
-                    />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => {
-                        const form = document.getElementById(
-                          "bookmarkForm",
-                        ) as HTMLFormElement;
-                        if (form) handleGenerateContent(form);
-                      }}
-                      disabled={isGenerating}
-                    >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Generating...
-                        </>
-                      ) : (
-                        "Generate"
-                      )}
+      <div className="flex flex-wrap justify-between gap-2 px-1 text-xs text-muted-foreground">
+        <p role="status">{visible.length} {visible.length === 1 ? "resource" : "resources"}</p>
+        <p>{canReorder ? "Use the arrows to set the order in this category." : "Select a category and clear other filters to reorder."}</p>
+      </div>
+      {visible.length === 0 ? (
+        <div className="rounded-xl border border-dashed px-4 py-12 text-center text-sm text-muted-foreground">
+          {bookmarks.length ? "No resources match these filters." : "Your collection is empty. Add your first resource or import a URL."}
+        </div>
+      ) : (
+        <ul aria-label="Resources" className="divide-y rounded-xl border bg-card">
+          {visible.map((item, index) => {
+            const resource = toShowcaseResource(item);
+            const label = showcaseCategories.find((group) => group.id === resource.category)?.label;
+            return (
+              <li key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 px-3 py-3 sm:px-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="showcase-admin-logo grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg border bg-[#2a2b32] text-white">
+                    <ShowcaseLogo resource={resource} size={21} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate font-medium" title={item.title}>{item.title}</p>
+                    <p className="truncate text-xs text-muted-foreground">{item.description || item.url}</p>
+                  </div>
+                </div>
+                <div className="col-start-2 row-span-2 row-start-1 flex flex-wrap items-center justify-end gap-1 sm:gap-2">
+                  {canReorder && (
+                    <div className="flex" role="group" aria-label="Resource order">
+                      <Button size="icon" type="button" variant="ghost" className="h-9 w-8" aria-label={"Move " + item.title + " earlier"} title="Move earlier" disabled={moving || index === 0} onClick={() => move(item, -1, visible[index - 1])}><ArrowUp className="h-4 w-4" aria-hidden="true" /></Button>
+                      <Button size="icon" type="button" variant="ghost" className="h-9 w-8" aria-label={"Move " + item.title + " later"} title="Move later" disabled={moving || index === visible.length - 1} onClick={() => move(item, 1, visible[index + 1])}><ArrowDown className="h-4 w-4" aria-hidden="true" /></Button>
+                    </div>
+                  )}
+                  <Button size="sm" type="button" variant="outline" aria-label={"Edit " + item.title} onClick={(event) => openEditor(event.currentTarget, item)}>Edit</Button>
+                  <Button size="icon" type="button" variant="ghost" className="h-9 w-8 text-muted-foreground hover:text-red-700 dark:hover:text-red-300" aria-label={"Delete " + item.title} title="Delete resource" onClick={(event) => {
+                    deletionTrigger.current = event.currentTarget;
+                    setDeleteError("");
+                    setToDelete(item);
+                  }}><Trash2 className="h-4 w-4" aria-hidden="true" /></Button>
+                  {!item.isArchived && (
+                    <Button size="icon" variant="ghost" asChild className="hidden h-9 w-8 text-muted-foreground sm:inline-flex">
+                      <a href={"/" + encodeURIComponent(item.slug)} target="_blank" rel="noopener noreferrer" aria-label={"Open " + item.title + " public page"} title="Open public page"><ExternalLink className="h-4 w-4" aria-hidden="true" /></a>
                     </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="title">Title</Label>
-                  <Input
-                    id="title"
-                    name="title"
-                    required
-                    value={formData.title}
-                    onChange={handleTitleChange}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        description: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="overview">Overview</Label>
-                  <p className="text-sm text-muted-foreground">Describe what this is useful for. You can add a public recommendation under Showcase details.</p>
-                  <Textarea
-                    id="overview"
-                    name="overview"
-                    value={formData.overview}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        overview: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-
-                <details className="rounded-lg border p-3">
-                  <summary className="cursor-pointer text-sm font-semibold">Showcase details</summary>
-                  <div className="mt-3 grid gap-3">
-                    <div className="space-y-1">
-                      <Label htmlFor="showcase-tags">Tags</Label>
-                      <Input id="showcase-tags" name="tags" placeholder="Open Source, Free" defaultValue={(starterMetadata?.tags ?? metadata.tags).join(", ")} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="showcase-platforms">Platforms</Label>
-                      <Input id="showcase-platforms" name="platforms" placeholder="Web, Windows, macOS" defaultValue={(starterMetadata?.platforms ?? metadata.platforms).join(", ")} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="showcase-github">GitHub repository URL</Label>
-                      <Input id="showcase-github" name="github" type="url" placeholder="https://github.com/owner/repo" defaultValue={starterMetadata?.github ?? metadata.github ?? ""} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="showcase-screenshot">Screenshot URL</Label>
-                      <Input id="showcase-screenshot" name="screenshot" placeholder="https://…" defaultValue={selectedBookmark?.screenshot ?? ""} />
-                      <p className="text-sm text-muted-foreground">Use an official or permitted screenshot. It appears before other artwork.</p>
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="showcase-artwork">Artwork URL</Label>
-                      <Input id="showcase-artwork" name="artwork" placeholder="https://… or /resources/…" defaultValue={metadata.artworkUrl ?? ""} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="showcase-recommendation">Public recommendation</Label>
-                      <Textarea id="showcase-recommendation" name="recommendation" rows={3} defaultValue={metadata.recommendation ?? ""} />
-                    </div>
-                  </div>
-                </details>
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Select
-                    name="categoryId"
-                    value={formData.categoryId}
-                    onValueChange={(value) =>
-                      setFormData((prev) => ({ ...prev, categoryId: value }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No Category</SelectItem>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="favicon">Favicon URL</Label>
-                  <Input
-                    id="favicon"
-                    name="favicon"
-                    type="url"
-                    value={formData.favicon}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        favicon: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="ogImage">OG Image URL</Label>
-                  <Input
-                    id="ogImage"
-                    name="ogImage"
-                    type="url"
-                    value={formData.ogImage}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        ogImage: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="isFavorite"
-                      name="isFavorite"
-                      checked={formData.isFavorite}
-                      onCheckedChange={(checked) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          isFavorite: checked as boolean,
-                        }))
-                      }
-                    />
-                    <Label htmlFor="isFavorite">Favorite</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="isArchived"
-                      name="isArchived"
-                      checked={formData.isArchived}
-                      onCheckedChange={(checked) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          isArchived: checked as boolean,
-                        }))
-                      }
-                    />
-                    <Label htmlFor="isArchived">Archived</Label>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <SheetFooter>
-              <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-end">
-                <SheetClose asChild>
-                  <Button type="button" variant="outline">
-                    Cancel
-                  </Button>
-                </SheetClose>
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Changes"
                   )}
-                </Button>
-              </div>
-            </SheetFooter>
-          </form>
+                </div>
+                <div className="col-start-1 row-start-2 flex flex-wrap items-center gap-1.5 pl-[3.25rem]">
+                  <Badge variant="secondary" className="text-[.6875rem]">{label}</Badge>
+                  <Badge variant="outline" className={item.isArchived ? "text-[.6875rem] text-muted-foreground" : "text-[.6875rem] text-emerald-700 dark:text-emerald-400"}>{item.isArchived ? "Draft / hidden" : "Published"}</Badge>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <Sheet open={Boolean(editor)} onOpenChange={(open) => { if (!open && !editorSaving) setEditor(null); }}>
+        <SheetContent
+          className="flex w-full flex-col gap-0 p-0 sm:max-w-5xl"
+          onOpenAutoFocus={(event) => {
+            const input = document.getElementById("resource-url");
+            if (input) { event.preventDefault(); input.focus(); }
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            (editorTrigger.current?.isConnected ? editorTrigger.current : collectionHeading.current)?.focus();
+          }}
+        >
+          {editor && <ResourceEditor resource={editor.resource} mode={editor.mode} category={isShowcaseCategory(category) ? category : "software"} enrichmentAvailable={enrichmentAvailable} onSavingChange={setEditorSaving} onSaved={() => { setEditor(null); router.refresh(); }} />}
         </SheetContent>
       </Sheet>
 
-      <Sheet open={isBulkSheetOpen} onOpenChange={setIsBulkSheetOpen}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
-          <SheetHeader>
-            <SheetTitle>Bulk Upload Bookmarks</SheetTitle>
-            <SheetDescription>
-              Upload a CSV file with a list of URLs to import. Each URL will be
-              processed with a short delay to avoid rate limits.
-            </SheetDescription>
-          </SheetHeader>
-
-          <form onSubmit={handleBulkUpload} className="mt-6 space-y-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="file">Upload CSV File</Label>
-                <Input
-                  id="file"
-                  name="file"
-                  type="file"
-                  accept=".csv,text/csv"
-                  required
-                  disabled={isUploading}
-                />
-                <p className="text-sm text-muted-foreground">
-                  Upload a CSV file with a list of URLs (one per line). The
-                  first row can optionally contain a header.
-                </p>
-              </div>
-
-              {isUploading && (
-                <div className="space-y-2 rounded-md bg-muted p-4">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm font-medium">
-                      Processing URLs...
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    This may take a while. Please keep this window open.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <SheetFooter>
-              <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-end">
-                <SheetClose asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isUploading}
-                  >
-                    Cancel
-                  </Button>
-                </SheetClose>
-                <Button type="submit" disabled={isUploading}>
-                  {isUploading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Uploading...
-                    </>
-                  ) : (
-                    "Upload and Process"
-                  )}
-                </Button>
-              </div>
-            </SheetFooter>
-          </form>
-        </SheetContent>
-      </Sheet>
-    </div>
+      <Dialog open={Boolean(toDelete)} onOpenChange={(open) => { if (!open && !isDeleting) setToDelete(null); }}>
+        <DialogContent onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          (deletionTrigger.current ?? collectionHeading.current)?.focus();
+        }}>
+          <DialogTitle>Delete resource?</DialogTitle>
+          <DialogDescription>{toDelete?.title} and its uploaded images will be permanently removed from Goodfind.</DialogDescription>
+          {deleteError && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{deleteError}</p>}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setToDelete(null)} disabled={isDeleting}>Cancel</Button>
+            <Button type="button" variant="destructive" onClick={confirmDelete} disabled={isDeleting}>{isDeleting ? "Deleting" : "Delete resource"}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {enrichmentAvailable && <BulkImport open={bulkOpen} onOpenChange={setBulkOpen} />}
+    </section>
   );
 }

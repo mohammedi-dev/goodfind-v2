@@ -2,6 +2,7 @@
 
 const nextConfig = {
   devIndicators: false,
+  experimental: { serverActions: { bodySizeLimit: "5mb" } },
   images: {
     remotePatterns: [
       {

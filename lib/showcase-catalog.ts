@@ -1,4 +1,5 @@
-import type { Artwork } from "./showcase";
+import { githubResourceUrl, isArtworkPattern, isHexColor, readShowcaseTags, showcaseAssetUrl, showcaseCategory, showcaseImageUrl, showcaseLogoUrl } from "./showcase";
+import type { Artwork, ShowcaseResource } from "./showcase";
 
 type ResourceStyle = {
   accent: string;
@@ -32,4 +33,49 @@ const resourceStyles: Record<string, ResourceStyle> = {
 
 export function getResourceStyle(slug: string): ResourceStyle | undefined {
   return Object.hasOwn(resourceStyles, slug) ? resourceStyles[slug] : undefined;
+}
+
+const defaultStyles = {
+  ai: { accent: "#ac9afa", artwork: "rays" },
+  software: { accent: "#87a8f4", artwork: "grid" },
+  gaming: { accent: "#8fcfa7", artwork: "stack" },
+  media: { accent: "#e9a583", artwork: "orbit" },
+} satisfies Record<string, ResourceStyle>;
+
+type ShowcaseSource = Pick<ShowcaseResource, "id" | "slug" | "title" | "description" | "overview" | "url" | "favicon" | "screenshot"> & {
+  tags: string | null;
+  category: { slug: string } | null;
+  appearance: { accent: string | null; background: string | null; pattern: string | null; logoId: string | null; artworkId: string | null } | null;
+};
+
+export function toShowcaseResource(bookmark: ShowcaseSource): ShowcaseResource {
+  const editorial = getResourceStyle(bookmark.slug);
+  const metadata = readShowcaseTags(bookmark.tags);
+  const tags = bookmark.tags === null ? editorial?.tags ?? [] : metadata.tags;
+  const category = showcaseCategory(bookmark.category?.slug, tags);
+  const style = editorial ?? defaultStyles[category];
+  const { appearance } = bookmark;
+  const bundledFavicon = editorial ? `/showcase-icons/${bookmark.slug}.webp` : null;
+  const originalFavicon = (bookmark.favicon !== editorial?.stockFavicon ? showcaseLogoUrl(bookmark.favicon) : null) ?? bundledFavicon;
+  const favicon = appearance?.logoId ? showcaseAssetUrl(appearance.logoId) : originalFavicon;
+  return {
+    id: bookmark.id,
+    slug: bookmark.slug,
+    title: bookmark.title,
+    description: bookmark.description,
+    overview: bookmark.overview,
+    url: bookmark.url,
+    favicon,
+    fallbackFavicon: favicon === bundledFavicon ? null : bundledFavicon,
+    screenshot: appearance?.artworkId ? showcaseAssetUrl(appearance.artworkId) : showcaseImageUrl(bookmark.screenshot),
+    artworkUrl: metadata.artworkUrl,
+    recommendation: metadata.recommendation,
+    tags,
+    platforms: bookmark.tags === null ? editorial?.platforms ?? [] : metadata.platforms,
+    github: metadata.github ?? (bookmark.tags === null ? githubResourceUrl(editorial?.github) : null) ?? githubResourceUrl(bookmark.url),
+    category,
+    accent: isHexColor(appearance?.accent) ? appearance.accent : style.accent,
+    background: isHexColor(appearance?.background) ? appearance.background : undefined,
+    artwork: isArtworkPattern(appearance?.pattern) ? appearance.pattern : style.artwork,
+  };
 }
