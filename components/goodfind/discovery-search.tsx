@@ -20,7 +20,8 @@ export function DiscoverySearch() {
     if (url.pathname !== pathname) return;
     const cleaned = term.trim();
     const existing = url.searchParams.get("search") ?? "";
-    if (cleaned === existing) return;
+    // The current URL can match while an earlier search navigation is still pending.
+    if (cleaned === existing && !isPending) return;
 
     pendingTerm.current = cleaned;
     url.searchParams.delete("page");
