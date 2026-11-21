@@ -22,8 +22,15 @@ export function ShowcaseLogo({ resource, size = 38 }: { resource: ShowcaseResour
 }
 
 export function ShowcaseCard({ resource, onOpen }: { resource: ShowcaseResource; onOpen?: (trigger: HTMLButtonElement) => void }) {
+  const hasDefaultChatGPTArt = onOpen && resource.slug === "chatgpt" &&
+    resource.artwork === "orbit" &&
+    resource.favicon === "/showcase-icons/chatgpt.webp";
   const art = (
-    <div className="showcase-card-art" data-artwork={resource.artwork} aria-hidden="true">
+    <div
+      className={hasDefaultChatGPTArt ? "showcase-card-art showcase-chatgpt-art" : "showcase-card-art"}
+      data-artwork={resource.artwork}
+      aria-hidden="true"
+    >
       <div className="showcase-engraving"><i /><i /><i /></div>
       <span className="showcase-emblem"><ShowcaseLogo resource={resource} size={56} /></span>
     </div>
