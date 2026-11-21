@@ -119,29 +119,33 @@
 .showcase-clear { display: inline-flex; align-items: center; flex: none; gap: .3rem; min-height: 1.8rem; padding-inline: .3rem; border-radius: .4rem; color: var(--sc-secondary); font-size: .8125rem; font-weight: 700; }
 .showcase-clear:hover { color: var(--sc-text); }
 .showcase-rail {
+  --sc-visible-cards: 3;
+  position: relative;
   min-height: calc(var(--sc-art-height) + var(--sc-copy-height) + 1rem);
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: .36rem .27rem .9rem;
-  scroll-padding-inline: .27rem;
-  scroll-snap-type: x mandatory;
+  margin-inline: .27rem;
+  overflow: hidden;
+  overflow: clip;
+  padding-block: .36rem .9rem;
   scrollbar-width: none;
 }
 .showcase-rail::-webkit-scrollbar { display: none; }
 .showcase-rail:focus-visible { outline-offset: 2px; border-radius: var(--sc-card-radius); }
-.showcase-rail[data-dragging="true"] { scroll-snap-type: none; user-select: none; cursor: grabbing; }
+.showcase-rail[data-dragging="true"] { user-select: none; cursor: grabbing; }
 .showcase-rail[data-dragging="true"] .showcase-card-button { cursor: grabbing; }
-.showcase-cards { display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - var(--sc-gap) * 3) / 3.26); gap: var(--sc-gap); list-style: none; }
-.showcase-card-item { position: relative; min-width: 0; scroll-snap-align: start; }
-.showcase-card-item:last-child::after {
-  content: "";
-  position: absolute;
-  inset-inline-start: 100%;
-  bottom: 0;
-  width: var(--sc-trailing-space, 0px);
-  height: 1px;
-  pointer-events: none;
+.showcase-cards {
+  /* Embla measures with integer offsets. Leave room for rounding with one card offscreen. */
+  --sc-loop-rounding: 2px;
+  display: flex;
+  width: calc(100% - var(--sc-loop-rounding));
+  list-style: none;
+  touch-action: pan-y pinch-zoom;
 }
+.showcase-card-item {
+  flex: 0 0 calc((100% + var(--sc-loop-rounding) - (var(--sc-visible-cards) - 1) * var(--sc-gap)) / var(--sc-visible-cards));
+  min-width: 0;
+  margin-inline-end: var(--sc-gap);
+}
+.showcase-card-motion { height: 100%; }
 .showcase-card {
   position: relative;
   isolation: isolate;
@@ -325,6 +329,20 @@
 }
 .showcase .showcase-chatgpt-art .showcase-emblem img { width: 65%; }
 
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .showcase-rail .showcase-card-art { perspective: 32rem; }
+  .showcase-rail .showcase-preview { transition: transform 420ms var(--sc-ease); }
+  .showcase-rail:not([data-dragging]) .showcase-card:hover .showcase-preview { transform: scale(1.045); }
+  .showcase-rail:not([data-dragging]) .showcase-card:hover .showcase-emblem {
+    animation: showcase-emblem-turn 780ms var(--sc-ease);
+  }
+}
+@keyframes showcase-emblem-turn {
+  0%, 100% { rotate: y 0deg; scale: 1; }
+  37% { rotate: y -32deg; scale: 1.06; }
+  70% { rotate: y 12deg; scale: 1.02; }
+}
+
 .showcase-card-copy { display: flex; flex-direction: column; min-height: var(--sc-copy-height); gap: .43rem; padding: .88rem 1.05rem 1.02rem; }
 .showcase-card-title-row { display: flex; align-items: center; justify-content: space-between; gap: .45rem; }
 .showcase-card h2 { font-size: clamp(1.06rem, 1.4vw, 1.28rem); font-weight: 800; line-height: 1.23; letter-spacing: -.032em; overflow-wrap: anywhere; }
@@ -387,11 +405,11 @@
 .showcase-search-dialog input::placeholder { color: var(--sc-secondary); }
 
 @media (max-width: 67rem) {
-  .showcase-cards { grid-auto-columns: calc((100% - var(--sc-gap) * 2) / 2.38); }
+  .showcase-rail { --sc-visible-cards: 2; }
 }
 @media (max-width: 43rem) {
   .showcase { --sc-copy-height: 7.1rem; }
-  .showcase-cards { grid-auto-columns: calc((100% - var(--sc-gap)) / 1.1); }
+  .showcase-rail { --sc-visible-cards: 1; }
   .showcase-header-inner { min-height: 3.65rem; }
   .showcase-results { padding-bottom: 1rem; }
 }
