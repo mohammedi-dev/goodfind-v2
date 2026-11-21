@@ -1,7 +1,6 @@
 import { db } from "./client";
-import { bookmarks, categories } from "./schema";
+import { categories } from "./schema";
 import { seedShowcase } from "./showcase-seed";
-import { getResourceStyle } from "@/lib/showcase-catalog";
 
 async function seed() {
   console.log("🌱 Seeding database...");
@@ -43,83 +42,9 @@ async function seed() {
     }
   ];
 
-  // Create bookmarks
-  console.log("Creating bookmarks...");
-  const bookmarkData = [
-    {
-      url: "https://github.com",
-      title: "GitHub",
-      slug: "github",
-      description: "Where the world builds software",
-      categoryId: "development",
-      favicon: getResourceStyle("github")?.stockFavicon,
-      ogImage: "https://github.githubassets.com/images/modules/site/social-cards/homepage.png",
-      overview: "GitHub is where over 100 million developers shape the future of software, together. Contribute to the open source community, manage your Git repositories...",
-      isFavorite: true
-    },
-    {
-      url: "https://figma.com",
-      title: "Figma",
-      slug: "figma",
-      description: "The collaborative interface design tool",
-      categoryId: "design",
-      favicon: getResourceStyle("figma")?.stockFavicon,
-      ogImage: "https://cdn.sanity.io/images/599r6htc/localized/a279334dfd43febf8fec669011443159e9089cda-2400x1260.png?w=1200&q=70&fit=max&auto=format",
-      overview: "Figma is the leading collaborative design tool for building meaningful products. Seamlessly design, prototype, develop, and collect feedback in a single platform.",
-      isFavorite: true
-    },
-    {
-      url: "https://notion.so",
-      title: "Notion",
-      slug: "notion",
-      description: "All-in-one workspace",
-      categoryId: "productivity",
-      favicon: getResourceStyle("notion")?.stockFavicon,
-      ogImage: "https://www.notion.so/cdn-cgi/image/format=auto,width=640,quality=100/front-static/shared/icons/notion-app-icon-3d.png",
-      overview: "A new tool that blends your everyday work apps into one. It's the all-in-one workspace for you and your team.",
-      isFavorite: true
-    },
-    {
-      url: "https://www.coursera.org",
-      title: "Coursera",
-      slug: "coursera",
-      description: "Learn without limits",
-      categoryId: "learning",
-      favicon: getResourceStyle("coursera")?.stockFavicon,
-      ogImage: "https://about.coursera.org/images/social/coursera-social.png",
-      overview: "Join Coursera for free and learn online. Build skills with courses from top universities like Yale, Michigan, Stanford, and leading companies like Google and IBM.",
-      isFavorite: false
-    },
-    {
-      url: "https://react.dev",
-      title: "React",
-      slug: "react",
-      description: "The library for web and native user interfaces",
-      categoryId: "development",
-      favicon: getResourceStyle("react")?.stockFavicon,
-      ogImage: "https://react.dev/images/og-home.png",
-      overview: "React is the library for web and native user interfaces",
-      isFavorite: true
-    },
-    {
-      url: "https://dribbble.com",
-      title: "Dribbble",
-      slug: "dribbble",
-      description: "Discover the world's top designers & creatives",
-      categoryId: "design",
-      favicon: getResourceStyle("dribbble")?.stockFavicon,
-      ogImage: "https://cdn.dribbble.com/assets/art-banners/manifest-banner-1-a9f45a6adc987f0f59d08a818ffe1832447d7d4fef78fefdda4f085f6dac6660.png",
-      overview: "Dribbble is the leading destination to find & showcase creative work and home to the world's best design professionals.",
-      isFavorite: false
-    }
-  ];
-
-  await db.transaction(async (tx) => {
-    await tx.insert(categories).values(categoryData).onConflictDoNothing();
-    await tx.insert(bookmarks).values(bookmarkData).onConflictDoNothing();
-  });
-  await seedShowcase();
-  console.log("✅ Seeding complete!");
+  await db.insert(categories).values(categoryData).onConflictDoNothing();
+  const result = await seedShowcase(process.argv.includes("--replace-starters"));
+  console.log("Catalog seeded. Added " + result.added + ", removed " + result.removed + " starter resources.");
 }
 
 seed().catch((error) => {
