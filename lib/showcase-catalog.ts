@@ -11,6 +11,17 @@ type ResourceStyle = {
 };
 
 const resourceStyles: Record<string, ResourceStyle> = {
+  "nuvio-torbox": { accent: "#a8a1ff", artwork: "rays" },
+  shuttletv: { accent: "#71b5fb", artwork: "orbit" },
+  vivarium: { accent: "#f58b92", artwork: "swatches" },
+  arrowtv: { accent: "#82dce5", artwork: "signal" },
+  "clean-your-tv": { accent: "#74c7bd", artwork: "stack" },
+  ascendara: { accent: "#a794ff", artwork: "rays" },
+  "pirated-games-megathread": { accent: "#a7b6c3", artwork: "terminal" },
+  fmhy: { accent: "#a298fb", artwork: "orbit" },
+  "search-browser": { accent: "#b8c1cc", artwork: "stack" },
+  bitwarden: { accent: "#75a4ff", artwork: "grid" },
+  "ad-blockers": { accent: "#e68185", artwork: "grid" },
   github: { accent: "#8c9dae", artwork: "orbit", platforms: ["Web", "iOS", "Android"], tags: ["Development"], stockFavicon: "https://github.githubassets.com/favicons/favicon.svg" },
   figma: { accent: "#b598f1", artwork: "swatches", platforms: ["Web", "macOS", "Windows"], tags: ["Design", "Collaboration"], stockFavicon: "https://static.figma.com/app/icon/1/favicon.svg" },
   notion: { accent: "#bfbab4", artwork: "grid", platforms: ["Web", "macOS", "Windows", "iOS", "Android"], tags: ["Productivity"], stockFavicon: "https://www.notion.so/images/favicon.ico" },

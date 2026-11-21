@@ -55,7 +55,11 @@ function ResourceDetails({ resource, open, pointerFocus, onOpenChange, restoreFo
           {resource.overview?.trim() && resource.overview.trim() !== resource.description?.trim() && (
             <section className="showcase-detail-section">
               <h3>What it’s useful for</h3>
-              <div className="showcase-detail-prose"><Markdown>{resource.overview}</Markdown></div>
+              <div className="showcase-detail-prose">
+                <Markdown components={{
+                  a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>,
+                }}>{resource.overview}</Markdown>
+              </div>
             </section>
           )}
           {resource.recommendation && (
@@ -104,6 +108,8 @@ export function Showcase({ resources, initialCategory, pinnedCategory, initialSe
   const searchTrigger = useRef<HTMLButtonElement>(null);
   const tabs = useRef<Partial<Record<ShowcaseCategory, HTMLButtonElement | null>>>({});
   const shown = resources.filter((resource) => resource.category === category && matchesQuery(resource, search));
+  const fmhyUrl = resources.find((resource) => resource.slug === "fmhy")?.url;
+  const virgilUrl = resources.find((resource) => resource.slug === "virgil-search")?.url;
 
   useEffect(() => {
     function shortcut(event: globalThis.KeyboardEvent) {
@@ -218,6 +224,7 @@ export function Showcase({ resources, initialCategory, pinnedCategory, initialSe
                 key={category + ":" + search}
                 resources={shown}
                 label={categoryLabel(category) + " resources"}
+                sourceUrl={fmhyUrl}
                 emptyMessage={search ? "No resources match this search." : "This category is waiting for its first resource."}
                 reduceMotion={Boolean(reduceMotion)}
                 onOpen={(resource, button) => {
@@ -247,6 +254,11 @@ export function Showcase({ resources, initialCategory, pinnedCategory, initialSe
               <input aria-label="Search resources" placeholder="Try “Open Source”" value={draft} onChange={(event) => setDraft(event.currentTarget.value)} />
               <button className="showcase-link-primary" type="submit" aria-label="Apply search"><ArrowRight size={19} aria-hidden="true" /></button>
             </form>
+            {virgilUrl && (
+              <a className="showcase-external-link" href={virgilUrl} target="_blank" rel="noopener noreferrer">
+                Search software on Virgil <ArrowUpRight size={14} aria-hidden="true" />
+              </a>
+            )}
           </DialogContent>
         </Dialog>
       </div>

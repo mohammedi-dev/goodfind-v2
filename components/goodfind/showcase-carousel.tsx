@@ -3,7 +3,7 @@
 import useEmblaCarousel from "embla-carousel-react";
 import { WheelGesturesPlugin } from "embla-carousel-wheel-gestures";
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { KeyboardEvent } from "react";
 import type { ShowcaseResource } from "@/lib/showcase";
@@ -12,9 +12,10 @@ import { ShowcaseCard } from "./showcase-card";
 const railId = "showcase-rail";
 const easing = [.22, .68, .24, 1] as const;
 
-export function ShowcaseCarousel({ resources, label, emptyMessage, reduceMotion, onOpen }: {
+export function ShowcaseCarousel({ resources, label, sourceUrl, emptyMessage, reduceMotion, onOpen }: {
   resources: ShowcaseResource[];
   label: string;
+  sourceUrl?: string;
   emptyMessage: string;
   reduceMotion: boolean;
   onOpen: (resource: ShowcaseResource, button: HTMLButtonElement) => void;
@@ -116,7 +117,12 @@ export function ShowcaseCarousel({ resources, label, emptyMessage, reduceMotion,
           <div className="showcase-empty"><p>{emptyMessage}</p></div>
         )}
       </div>
-      <div className="showcase-rail-controls" aria-label="Browse resources">
+      <div className="showcase-rail-controls">
+        {sourceUrl && (
+          <a className="showcase-external-link showcase-discovery-source" href={sourceUrl} target="_blank" rel="noopener noreferrer">
+            Discovery source <span>FMHY</span> <ArrowUpRight size={14} aria-hidden="true" />
+          </a>
+        )}
         <button type="button" onClick={() => carousel?.scrollPrev(reduceMotion)} disabled={!controls.previous} aria-controls={railId} aria-label="Previous resources">
           <ChevronLeft size={20} aria-hidden="true" />
         </button>

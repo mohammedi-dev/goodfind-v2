@@ -14,7 +14,7 @@ Built with modern web technologies and designed with a focus on user experience,
 
 The homepage is a four-category showcase for AI, Software, Gaming, and Media. Existing categories remain editable from the admin. Legacy resources from other categories appear under Software unless a category or tag matches another showcase group. Existing private notes stay in the database.
 
-The optional local seed adds example resources without replacing existing records. Where a resource has no screenshot, Goodfind uses its own artwork. Bundled marks are from [Simple Icons](https://simpleicons.org/) and official resource sites where available.
+The optional local seed adds the curated Goodfind catalog. The resource cards link to official sites and external guides. FMHY is credited as the discovery source, and the search dialog links to Virgil's software search. Bundled marks are from [Simple Icons](https://simpleicons.org/) and official resource sites where available.
 
 ## Tech Stack
 
@@ -67,7 +67,9 @@ pnpm db:seed
 pnpm dev
 ```
 
-Open the showcase at [http://localhost:3000](http://localhost:3000) and sign in at [/admin](http://localhost:3000/admin). The seed adds 18 example resources to a fresh database and can be rerun safely. `pnpm lint`, `pnpm exec tsc --noEmit` and `pnpm build` check the project.
+Open the showcase at [http://localhost:3000](http://localhost:3000) and sign in at [/admin](http://localhost:3000/admin). The seed adds 12 resources to a fresh database and can be rerun safely. On an existing installation with the original demo catalog, back up the database and run `pnpm db:seed --replace-starters` to remove the published starter cards and add the curated catalog. This leaves drafts and independently added entries intact.
+
+`pnpm lint`, `pnpm exec tsc --noEmit`, and `pnpm build` check the project.
 
 The local setup initializes a database directly from `db/schema.ts`. For an existing schema-initialized database, back it up and run `pnpm db:push` to add the showcase settings table. On a database managed by Drizzle migrations, review and apply migration `0003_showcase_resource_settings.sql`. It adds one table and leaves existing records intact. Reconcile the older migrations against a backup if their schema differs from the current database.
 

@@ -356,6 +356,18 @@
 .showcase-rail-controls button { display: grid; width: 2.55rem; height: 2.55rem; place-items: center; border: 1px solid var(--sc-border); border-radius: 50%; color: var(--sc-text); background: #19191e; transition: background-color 160ms; }
 .showcase-rail-controls button:hover:not(:disabled) { background: #33333b; }
 .showcase-rail-controls button:disabled { opacity: .43; }
+.showcase-external-link {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 2rem;
+  align-items: center;
+  gap: .35rem;
+  color: var(--sc-secondary);
+  font-size: .8125rem;
+}
+.showcase-external-link:hover { color: var(--sc-text); }
+.showcase-discovery-source { margin-inline-end: auto; }
+.showcase-discovery-source span { color: var(--sc-text); font-weight: 750; }
 
 .showcase-dialog {
   max-width: min(34.5rem, 100vw - 2rem);
