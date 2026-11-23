@@ -8,6 +8,7 @@ export const showcaseCategories = [
 ] as const;
 
 export type ShowcaseCategory = (typeof showcaseCategories)[number]["id"];
+export const defaultCoverAccent = "#888888";
 export const artworkPatterns = ["orbit", "stack", "grid", "rays", "signal", "record", "swatches", "terminal"] as const;
 export type Artwork = (typeof artworkPatterns)[number];
 
@@ -75,11 +76,6 @@ export function compareShowcaseOrder(a: ShowcaseOrder, b: ShowcaseOrder) {
 
 export function isShowcaseCategory(value: string | undefined): value is ShowcaseCategory {
   return showcaseCategories.some(({ id }) => id === value);
-}
-
-export function defaultShowcaseCategory(resources: Pick<ShowcaseResource, "category">[]): ShowcaseCategory {
-  if (resources.some(({ category }) => category === "software")) return "software";
-  return showcaseCategories.find(({ id }) => resources.some(({ category }) => category === id))?.id ?? "software";
 }
 
 export function githubResourceUrl(value?: string | null): string | null {

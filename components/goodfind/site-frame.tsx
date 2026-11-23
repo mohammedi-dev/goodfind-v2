@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { Container } from "@/components/craft";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Brand } from "./brand";
 import { NewsletterDialog } from "./newsletter-dialog";
 
 export function SiteFrame({ children, showNewsletter = true }: { children: ReactNode; showNewsletter?: boolean }) {
@@ -9,7 +10,7 @@ export function SiteFrame({ children, showNewsletter = true }: { children: React
     <>
       <header className="gf-inner-header">
         <Container className="flex flex-wrap items-center justify-between gap-3">
-          <Brand />
+          <Link className="gf-home-link" href="/"><ArrowLeft size={16} aria-hidden="true" /> All resources</Link>
           <div className="flex items-center gap-2">
             {showNewsletter && <NewsletterDialog compact />}
             <ThemeToggle />

@@ -84,19 +84,6 @@ export function ShowcaseCarousel({ resources, label, sourceUrl, emptyMessage, re
       exit={{ opacity: reduceMotion ? 1 : 0.58, transition: { duration: reduceMotion ? 0 : 0.1 } }}
       transition={{ duration: reduceMotion ? 0 : 0.17, ease: easing }}
     >
-      <div className="showcase-rail-controls">
-        {sourceUrl && (
-          <a className="showcase-external-link showcase-discovery-source" href={sourceUrl} target="_blank" rel="noopener noreferrer">
-            Discovery source <span>FMHY</span> <ArrowUpRight size={14} aria-hidden="true" />
-          </a>
-        )}
-        <button type="button" onClick={() => carousel?.scrollPrev(reduceMotion)} disabled={!controls.previous} aria-controls={railId} aria-label="Previous resources">
-          <ChevronLeft size={20} aria-hidden="true" />
-        </button>
-        <button type="button" onClick={() => carousel?.scrollNext(reduceMotion)} disabled={!controls.next} aria-controls={railId} aria-label="Next resources">
-          <ChevronRight size={20} aria-hidden="true" />
-        </button>
-      </div>
       <div
         id={railId}
         ref={count ? viewport : undefined}
@@ -129,6 +116,19 @@ export function ShowcaseCarousel({ resources, label, sourceUrl, emptyMessage, re
         ) : (
           <div className="showcase-empty"><p>{emptyMessage}</p></div>
         )}
+      </div>
+      <div className="showcase-rail-controls">
+        {sourceUrl && (
+          <a className="showcase-external-link showcase-discovery-source" href={sourceUrl} target="_blank" rel="noopener noreferrer">
+            Discovery source <span>FMHY</span> <ArrowUpRight size={14} aria-hidden="true" />
+          </a>
+        )}
+        <button type="button" onClick={() => carousel?.scrollPrev(reduceMotion)} disabled={!controls.previous} aria-controls={railId} aria-label="Previous resources">
+          <ChevronLeft size={20} aria-hidden="true" />
+        </button>
+        <button type="button" onClick={() => carousel?.scrollNext(reduceMotion)} disabled={!controls.next} aria-controls={railId} aria-label="Next resources">
+          <ChevronRight size={20} aria-hidden="true" />
+        </button>
       </div>
     </motion.div>
   );

@@ -5,7 +5,6 @@ import { useState } from "react";
 import { ChevronDown, Compass, FolderKanban, LayoutGrid, Layers3, Menu, Sparkles, Timer } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { discoveryHref, topics } from "@/lib/discovery";
-import { Brand } from "./brand";
 import { topicIcons } from "./discovery-icons";
 
 export type DiscoveryLocation = {
@@ -122,7 +121,6 @@ export function DiscoverySidebar({ location, categories }: {
 }) {
   return (
     <aside className="gf-sidebar">
-      <div className="gf-sidebar-brand"><Brand /></div>
       <Navigation location={location} categories={categories} />
     </aside>
   );
@@ -143,7 +141,6 @@ export function MobileDiscoveryMenu({ location, categories }: {
       <SheetContent className="gf-mobile-panel" side="left">
         <SheetTitle className="sr-only">Library navigation</SheetTitle>
         <SheetDescription className="sr-only">Browse Goodfind sections, topics and categories.</SheetDescription>
-        <div className="gf-sidebar-brand"><Brand onClick={() => setOpen(false)} /></div>
         <Navigation close={() => setOpen(false)} location={location} categories={categories} />
       </SheetContent>
     </Sheet>

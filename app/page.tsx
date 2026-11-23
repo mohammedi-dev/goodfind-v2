@@ -1,6 +1,6 @@
 import { Showcase } from "@/components/goodfind/showcase";
 import { getShowcaseBookmarks } from "@/lib/data";
-import { compareShowcaseOrder, defaultShowcaseCategory } from "@/lib/showcase";
+import { compareShowcaseOrder } from "@/lib/showcase";
 import { toShowcaseResource } from "@/lib/showcase-catalog";
 import { isBookmarkUrl } from "@/lib/utils";
 import "./showcase.css";
@@ -13,5 +13,5 @@ export default async function Home() {
     .filter((bookmark) => isBookmarkUrl(bookmark.url))
     .sort(compareShowcaseOrder)
     .map(toShowcaseResource);
-  return <Showcase resources={resources} homeCategory={defaultShowcaseCategory(resources)} />;
+  return <Showcase resources={resources} />;
 }
