@@ -12,7 +12,7 @@ Goodfind is a curated library of software, tools, and useful websites. Preserve 
 
 ## Design and implementation
 
-- Keep the public collection black and white, with resource marks rendered in their authentic colors. Use the existing Manrope typography, a clear heading hierarchy, consistent gutters, and shared spacing and radii. Keep the public homepage free of a Goodfind logo or wordmark.
+- Keep the public collection black and white. Preserve each app's original logo colors even when an official monochrome version is available. Use the existing Manrope typography, a clear heading hierarchy, consistent gutters, and shared spacing and radii. Keep the public homepage free of a Goodfind logo or wordmark.
 - Use the semantic HSL tokens in `app/globals.css` and Tailwind theme for shared and admin UI. Use the `--sc-*` tokens in `app/showcase.css` for the showcase and resource dialogs. `app/discovery.css` styles the shared discovery shell. Extend the appropriate token when a value has a shared purpose. Keep per-resource accent and background colors in the existing appearance settings.
 - Reuse components from `components/ui` (shadcn/Radix), Lucide icons, and the shared resource preview. Check both the admin live preview and the public card when changing `ShowcaseCard`. Keep data reads and sensitive logic on the server, with client components for interactive state.
 - Prefer authentic product marks and permitted screenshots. Use the editor’s logo and artwork settings and the bundled marks under `public/showcase-icons`. Logo-centered CSS treatments are the fallback. Avoid generic AI imagery and synthetic product screenshots.
