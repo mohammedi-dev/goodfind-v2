@@ -8,6 +8,7 @@ export const showcaseCategories = [
 ] as const;
 
 export type ShowcaseCategory = (typeof showcaseCategories)[number]["id"];
+export const defaultCoverAccent = "#888888";
 export const artworkPatterns = ["orbit", "stack", "grid", "rays", "signal", "record", "swatches", "terminal"] as const;
 export type Artwork = (typeof artworkPatterns)[number];
 

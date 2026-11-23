@@ -1,15 +1,14 @@
 :root {
-  --gf-canvas: #f7f6f4;
-  --gf-sidebar: #efeeeb;
+  --gf-canvas: #f7f7f7;
+  --gf-sidebar: #eee;
   --gf-surface: #fff;
-  --gf-raised: #f0eeeb;
-  --gf-line: #ded9d5;
-  --gf-line-strong: #c5b9b2;
-  --gf-text: #252125;
-  --gf-secondary: #5e565b;
-  --gf-accent: #aa3f2c;
-  --gf-accent-soft: #f7e2dc;
-  --gf-coral: #ff8b70;
+  --gf-raised: #eee;
+  --gf-line: #dadada;
+  --gf-line-strong: #bdbdbd;
+  --gf-text: #222;
+  --gf-secondary: #575757;
+  --gf-accent: #262626;
+  --gf-accent-soft: #e7e7e7;
   --gf-blue: #235892;
   --gf-blue-soft: #e4edf9;
   --gf-unit: 0.25rem;
@@ -27,16 +26,16 @@
 }
 
 .dark {
-  --gf-canvas: #101012;
-  --gf-sidebar: #141416;
-  --gf-surface: #19191c;
-  --gf-raised: #222225;
-  --gf-line: #2c2b30;
-  --gf-line-strong: #4b4549;
-  --gf-text: #f5f2f0;
-  --gf-secondary: #aaa4ad;
-  --gf-accent: #ff937b;
-  --gf-accent-soft: #352521;
+  --gf-canvas: #000;
+  --gf-sidebar: #101010;
+  --gf-surface: #141414;
+  --gf-raised: #222;
+  --gf-line: #2c2c2c;
+  --gf-line-strong: #494949;
+  --gf-text: #fafafa;
+  --gf-secondary: #b9b9b9;
+  --gf-accent: #fff;
+  --gf-accent-soft: #292929;
   --gf-blue: #a2c5f3;
   --gf-blue-soft: #212d3b;
 }
@@ -71,30 +70,16 @@
 
 .gf-skip:focus { transform: translateY(0); }
 
-.gf-brand {
+.gf-home-link {
   display: inline-flex;
   align-items: center;
-  gap: 0.625rem;
-  flex: none;
+  gap: .5rem;
+  min-height: 2.5rem;
   color: var(--gf-text);
-  font-size: 1.42rem;
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -0.065em;
+  font-size: var(--gf-type-label);
+  font-weight: 750;
 }
-
-.gf-brand-mark {
-  display: grid;
-  width: 2rem;
-  aspect-ratio: 1;
-  place-items: center;
-  border-radius: 0.55rem;
-  color: #261412;
-  background: var(--gf-coral);
-}
-
-.gf-brand-mark svg { width: 1.2rem; height: 1.2rem; stroke-width: 2.15; }
-.gf-brand-period { color: var(--gf-accent); }
+.gf-home-link:hover { text-decoration: underline; text-underline-offset: .22em; }
 
 .gf-sidebar {
   position: sticky;
@@ -108,7 +93,6 @@
   scrollbar-width: thin;
 }
 
-.gf-sidebar-brand { display: flex; align-items: center; min-height: 4.25rem; padding-inline: 0.55rem; }
 .gf-nav { display: grid; gap: 0.13rem; padding-top: 0.75rem; color: var(--gf-text); }
 .gf-nav-label {
   padding: 0 0.62rem 0.28rem;
@@ -268,7 +252,7 @@
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  color: #f6a794;
+  color: #d9d9d9;
   font-size: var(--gf-type-label);
   font-weight: 750;
   letter-spacing: 0.018em;
@@ -281,7 +265,6 @@
   line-height: 0.995;
   letter-spacing: -0.073em;
 }
-.gf-hero h1 span { color: var(--gf-coral); }
 .gf-hero p { max-width: 23rem; color: #d0c6c9; font-size: var(--gf-type-body); font-weight: 600; line-height: 1.6; }
 .gf-hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65rem; margin-top: 1.4rem; }
 
@@ -300,8 +283,8 @@
   transition: background-color var(--gf-fast), border-color var(--gf-fast), transform var(--gf-fast) var(--gf-ease);
 }
 .gf-button:active { transform: translateY(1px); }
-.gf-button-primary { background: var(--gf-coral); color: #281410; }
-.gf-button-primary:hover { background: #ffa18b; }
+.gf-button-primary { background: #f8f8f8; color: #171717; }
+.gf-button-primary:hover { background: #ddd; }
 .gf-button-hero-outline { border-color: #75696d; color: #f4eceb; background: #19171a; }
 .gf-button-hero-outline:hover { background: #2f282c; border-color: #a99da4; }
 .gf-button-outline { color: var(--gf-text); background: var(--gf-surface); border-color: var(--gf-line-strong); }
