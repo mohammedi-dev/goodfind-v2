@@ -77,6 +77,11 @@ export function isShowcaseCategory(value: string | undefined): value is Showcase
   return showcaseCategories.some(({ id }) => id === value);
 }
 
+export function defaultShowcaseCategory(resources: Pick<ShowcaseResource, "category">[]): ShowcaseCategory {
+  if (resources.some(({ category }) => category === "software")) return "software";
+  return showcaseCategories.find(({ id }) => resources.some(({ category }) => category === id))?.id ?? "software";
+}
+
 export function githubResourceUrl(value?: string | null): string | null {
   if (!value) return null;
   try {

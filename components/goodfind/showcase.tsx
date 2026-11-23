@@ -1,7 +1,8 @@
 "use client";
 
 import { AnimatePresence, LayoutGroup, MotionConfig, motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, ArrowUpRight, Github, Search, X } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUpRight, Gamepad2, Github, Layers3, Search, Sparkles, Tv, X } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent } from "react";
 import Markdown from "react-markdown";
@@ -9,12 +10,12 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Brand } from "./brand";
 import { ShowcaseCarousel } from "./showcase-carousel";
 import { ShowcaseLogo } from "./showcase-card";
-import { githubResourceUrl, showcaseCategories } from "@/lib/showcase";
+import { githubResourceUrl, isShowcaseCategory, showcaseCategories } from "@/lib/showcase";
 import type { ShowcaseCategory, ShowcaseResource } from "@/lib/showcase";
 
 const resultsId = "showcase-results";
-const defaultCategory: ShowcaseCategory = "software";
 const categoryLabel = (category: ShowcaseCategory) => showcaseCategories.find(({ id }) => id === category)?.label;
+const categoryIcons = { ai: Sparkles, software: Layers3, gaming: Gamepad2, media: Tv };
 
 function matchesQuery(resource: ShowcaseResource, query: string) {
   const q = query.toLowerCase();
@@ -90,16 +91,16 @@ function ResourceDetails({ resource, open, pointerFocus, onOpenChange, restoreFo
   );
 }
 
-export function Showcase({ resources, initialCategory, pinnedCategory, initialSearch }: {
+export function Showcase({ resources, homeCategory }: {
   resources: ShowcaseResource[];
-  initialCategory: ShowcaseCategory;
-  pinnedCategory: boolean;
-  initialSearch: string;
+  homeCategory: ShowcaseCategory;
 }) {
   const reduceMotion = useReducedMotion();
-  const [category, setCategory] = useState(() => pinnedCategory ? initialCategory : matchCategory(resources, initialCategory, initialSearch));
-  const [search, setSearch] = useState(initialSearch);
-  const [draft, setDraft] = useState(initialSearch);
+  const params = useSearchParams();
+  const search = params.get("search")?.trim() ?? "";
+  const requestedCategory = params.get("category") ?? undefined;
+  const category = isShowcaseCategory(requestedCategory) ? requestedCategory : matchCategory(resources, homeCategory, search);
+  const [draft, setDraft] = useState(search);
   const [searchOpen, setSearchOpen] = useState(false);
   const [detail, setDetail] = useState<ShowcaseResource | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -123,10 +124,8 @@ export function Showcase({ resources, initialCategory, pinnedCategory, initialSe
   }, [detail, search, searchOpen]);
 
   function updateView(nextCategory: ShowcaseCategory, query: string) {
-    setCategory(nextCategory);
-    setSearch(query);
     const url = new URL(window.location.href);
-    if (nextCategory === defaultCategory && !query) url.searchParams.delete("category");
+    if (nextCategory === homeCategory && !query) url.searchParams.delete("category");
     else url.searchParams.set("category", nextCategory);
     if (query) url.searchParams.set("search", query);
     else url.searchParams.delete("search");
@@ -170,42 +169,52 @@ export function Showcase({ resources, initialCategory, pinnedCategory, initialSe
           }
         }}
       >
-        <a className="showcase-skip" href="#main">Skip to resources</a>
+        <a className="showcase-skip" href="#browse">Skip to resources</a>
         <header className="showcase-header">
           <div className="showcase-frame showcase-header-inner">
             <Brand />
-            <button ref={searchTrigger} className="showcase-search-button" type="button" aria-haspopup="dialog" onClick={() => { setDraft(search); setSearchOpen(true); }}>
-              <Search aria-hidden="true" size={17} /> Search
-            </button>
+            <a className="showcase-browse-link" href="#browse">Browse resources <ArrowDown aria-hidden="true" size={15} /></a>
           </div>
         </header>
         <main className="showcase-frame" id="main" tabIndex={-1}>
           <div className="showcase-intro">
-            <h1>The good stuff on the internet<span>.</span></h1>
-            <p>A personal collection of useful software, good tools, and websites worth keeping.</p>
+            <div>
+              <h1>The good stuff on the internet<span>.</span></h1>
+              <p>A personal collection of useful software, good tools, and websites worth keeping.</p>
+            </div>
+            <button ref={searchTrigger} className="showcase-search-button" type="button" aria-haspopup="dialog" aria-keyshortcuts="Control+K Meta+K" onClick={() => { setDraft(search); setSearchOpen(true); }}>
+              <span className="showcase-search-icon"><Search aria-hidden="true" size={19} /></span>
+              <span className="showcase-search-label">Search Goodfind</span>
+              <ArrowRight className="showcase-search-arrow" aria-hidden="true" size={18} />
+            </button>
           </div>
 
-          <div className="showcase-filter">
+          <div className="showcase-filter" id="browse" tabIndex={-1}>
+            <h2>Browse the collection</h2>
             <LayoutGroup>
               <div className="showcase-tabs" role="tablist" aria-label="Resource categories">
-                {showcaseCategories.map(({ id, label }, index) => (
-                  <button
-                    id={`showcase-tab-${id}`}
-                    ref={(node) => { tabs.current[id] = node; }}
-                    className="showcase-tab"
-                    key={id}
-                    role="tab"
-                    type="button"
-                    aria-selected={category === id}
-                    aria-controls={resultsId}
-                    tabIndex={category === id ? 0 : -1}
-                    onClick={() => updateView(id, search)}
-                    onKeyDown={(event) => moveTabs(event, index)}
-                  >
-                    {category === id && <motion.span className="showcase-active-pill" layoutId="showcase-active-pill" transition={tabMotion} />}
-                    <span>{label}</span>
-                  </button>
-                ))}
+                {showcaseCategories.map(({ id, label }, index) => {
+                  const Icon = categoryIcons[id];
+                  return (
+                    <button
+                      id={`showcase-tab-${id}`}
+                      ref={(node) => { tabs.current[id] = node; }}
+                      className="showcase-tab"
+                      key={id}
+                      role="tab"
+                      type="button"
+                      aria-selected={category === id}
+                      aria-controls={resultsId}
+                      tabIndex={category === id ? 0 : -1}
+                      onClick={() => updateView(id, search)}
+                      onKeyDown={(event) => moveTabs(event, index)}
+                    >
+                      {category === id && <motion.span className="showcase-active-pill" layoutId="showcase-active-pill" transition={tabMotion} />}
+                      <Icon size={15} aria-hidden="true" />
+                      <span>{label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </LayoutGroup>
           </div>
@@ -216,7 +225,8 @@ export function Showcase({ resources, initialCategory, pinnedCategory, initialSe
             </div>
             {search && (
               <div className="showcase-results-top">
-                <button className="showcase-clear" type="button" onClick={() => applySearch("")}><X size={14} aria-hidden="true" /> Clear search</button>
+                <p>Results for <strong>“{search}”</strong></p>
+                <button className="showcase-clear" type="button" onClick={() => { applySearch(""); tabs.current[category]?.focus({ preventScroll: true }); }}><X size={14} aria-hidden="true" /> Clear search</button>
               </div>
             )}
             <AnimatePresence mode="wait" initial={false}>

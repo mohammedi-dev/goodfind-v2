@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { ResourceImage } from "@/components/resource-image";
 import type { ShowcaseResource } from "@/lib/showcase";
 
@@ -22,6 +22,7 @@ export function ShowcaseLogo({ resource, size = 38 }: { resource: ShowcaseResour
 }
 
 export function ShowcaseCard({ resource, onOpen }: { resource: ShowcaseResource; onOpen?: (trigger: HTMLButtonElement) => void }) {
+  const Title = onOpen ? "h3" : "h2";
   const hasDefaultChatGPTArt = onOpen && resource.slug === "chatgpt" &&
     resource.artwork === "orbit" &&
     resource.favicon === "/showcase-icons/chatgpt.webp";
@@ -47,8 +48,8 @@ export function ShowcaseCard({ resource, onOpen }: { resource: ShowcaseResource;
       </div>
       <div className="showcase-card-copy">
         <div className="showcase-card-title-row">
-          <h2>{resource.title}</h2>
-          <span className="showcase-card-arrow" aria-hidden="true"><ArrowUpRight size={18} /></span>
+          <Title className="showcase-card-title">{resource.title}</Title>
+          <span className="showcase-card-arrow" aria-hidden="true"><ArrowRight size={17} /></span>
         </div>
         <p>{resource.description || "Open the resource for more information."}</p>
       </div>
